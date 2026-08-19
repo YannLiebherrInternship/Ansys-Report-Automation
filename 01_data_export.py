@@ -1,4 +1,4 @@
-# 01_data_export.py : extraction de donnees - tout ce qui lit le modele / le Tabular Data pane et ecrit des fichiers CSV. Depend de 00_constants.py (doit etre execute avant ce fichier).
+# 01_data_export.py: data extraction - everything that reads the model / the Tabular Data pane and writes CSV files. Depends on 00_constants.py (must be executed before this file).
 
 import csv
 import os
@@ -7,11 +7,11 @@ import materials
 
 def export_active_tabular_data(directory, filename, start_col=3):
     """
-    Fait : exporte le contenu du Tabular Data pane actuellement affiche vers un fichier CSV.
-    Depend de : ExtAPI.UserInterface (pane Mechanical actif) ; l'appelant doit avoir fait Activate() sur l'objet avant l'appel.
-    Retourne : str, le chemin complet du CSV ecrit.
+    Does: exports the content of the currently displayed Tabular Data pane to a CSV file.
+    Depends on: ExtAPI.UserInterface (active Mechanical pane); the caller must have called Activate() on the object before this call.
+    Returns: str, the full path of the written CSV.
     """
-    # start_col saute les premieres colonnes du pane (numero de ligne / step), non pertinentes pour l'export.
+    # start_col skips the first columns of the pane (line number / step), not relevant for the export.
     pane = ExtAPI.UserInterface.GetPane(MechanicalPanelEnum.TabularData)
     control = pane.ControlUnknown
     num_columns = control.ColumnsCount + 1
@@ -24,7 +24,7 @@ def export_active_tabular_data(directory, filename, start_col=3):
             rows.append(line)
 
     filepath = os.path.join(directory, filename)
-    with open(filepath, 'wb') as f:  # 'wb' pour eviter les doubles retours a la ligne sous Windows
+    with open(filepath, 'wb') as f:  # 'wb' to avoid double line breaks on Windows
         writer = csv.writer(f, delimiter=';')
         for line in rows:
             writer.writerow([to_csv_cell(cell) for cell in line])
@@ -35,9 +35,9 @@ def export_active_tabular_data(directory, filename, start_col=3):
 
 def export_bc_tabular_data(directory, bc):
     """
-    Fait : exporte les donnees tabulaires d'une Boundary Condition donnee.
-    Depend de : export_active_tabular_data (apres Activate() de bc).
-    Retourne : str, le chemin du CSV.
+    Does: exports the tabular data of a given Boundary Condition.
+    Depends on: export_active_tabular_data (after Activate() on bc).
+    Returns: str, the path of the CSV.
     """
     bc.Activate()
     return export_active_tabular_data(directory, "{}.csv".format(bc.Name), start_col=3)
@@ -45,9 +45,9 @@ def export_bc_tabular_data(directory, bc):
 
 def export_bp_tabular_data(directory, bp):
     """
-    Fait : exporte les donnees tabulaires d'une Bolt Pretension donnee.
-    Depend de : export_active_tabular_data (apres Activate() de bp).
-    Retourne : str, le chemin du CSV.
+    Does: exports the tabular data of a given Bolt Pretension.
+    Depends on: export_active_tabular_data (after Activate() on bp).
+    Returns: str, the path of the CSV.
     """
     bp.Activate()
     return export_active_tabular_data(directory, "{}.csv".format(bp.Name), start_col=3)
@@ -55,24 +55,24 @@ def export_bp_tabular_data(directory, bp):
 
 def export_result_tabular_data(directory, obj):
     """
-    Fait : exporte les donnees tabulaires d'un objet resultat quelconque (resultat de solution, enfant de Contact/Bolt Tool, tracker de Solution Information...).
-    Depend de : export_active_tabular_data ; obj doit supporter .Activate() et .Name.
-    Retourne : str, le chemin du CSV.
+    Does: exports the tabular data of any result object (solution result, Contact/Bolt Tool child, Solution Information tracker...).
+    Depends on: export_active_tabular_data; obj must support .Activate() and .Name.
+    Returns: str, the path of the CSV.
     """
-    # Tous ces types d'objets partagent le meme layout de Tabular Data pane (colonne 1 ignoree, donnees a partir de la colonne 2).
+    # All these object types share the same Tabular Data pane layout (column 1 ignored, data starting from column 2).
     obj.Activate()
     return export_active_tabular_data(directory, "{}.csv".format(obj.Name), start_col=2)
 
 
 def export_contacts_summary_csv(directory, contact_list=None):
     """
-    Fait : exporte un tableau resume (type, frottement, raideur, tolerances, traitement d'interface) pour chaque Contact Region du modele.
-    Depend de : ExtAPI.DataModel (si contact_list est None) et _get_prop pour lire les proprietes de facon securisee.
-    Retourne : str, le chemin du CSV.
+    Does: exports a summary table (type, friction, stiffness, tolerances, interface treatment) for each Contact Region in the model.
+    Depends on: ExtAPI.DataModel (if contact_list is None) and _get_prop to read properties safely.
+    Returns: str, the path of the CSV.
     """
     filepath = os.path.join(directory, "contact_info_export.csv")
     if contact_list is None:
-        # None = comportement historique : toutes les Contact Region du modele (voir create_contact_summary_slide de 04_slides.py).
+        # None = historical behavior: all Contact Regions in the model (see create_contact_summary_slide in 04_slides.py).
         contact_list = ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.ContactRegion)
 
     with open(filepath, 'wb') as f:
@@ -121,9 +121,9 @@ def export_contacts_summary_csv(directory, contact_list=None):
 
 def export_mesh_report_csv(directory):
     """
-    Fait : exporte un rapport complet des parametres et statistiques du maillage (defauts, sizing, qualite, inflation, avance, statistiques).
-    Depend de : Model.Mesh et _get_prop pour lire les proprietes de facon securisee, _format_element_size pour ElementSize.
-    Retourne : str, le chemin du CSV.
+    Does: exports a complete report of mesh parameters and statistics (defaults, sizing, quality, inflation, advanced, statistics).
+    Depends on: Model.Mesh and _get_prop to read properties safely, _format_element_size for ElementSize.
+    Returns: str, the path of the CSV.
     """
     mesh = Model.Mesh
     rows = []
@@ -171,9 +171,9 @@ def export_mesh_report_csv(directory):
 
 def _get_prop(obj, prop_name):
     """
-    Fait : recupere une propriete d'un objet Mechanical de maniere securisee.
-    Depend de : getattr natif Python.
-    Retourne : la valeur de la propriete, ou None si absente / si l'acces leve une exception.
+    Does: retrieves a property of a Mechanical object safely.
+    Depends on: Python's native getattr.
+    Returns: the property value, or None if absent / if accessing it raises an exception.
     """
     try:
         return getattr(obj, prop_name)
@@ -183,12 +183,12 @@ def _get_prop(obj, prop_name):
 
 def _format_element_size(mesh):
     """
-    Fait : lit ElementSize et distingue le sizing "Default" (aucune valeur saisie par l'utilisateur,
-    Quantity nulle) d'une valeur reellement definie.
-    Depend de : _get_prop, mesh.ElementSize (Quantity .NET, expose .Value) - quand Element Size est
-    laisse sur "Default" dans Mechanical, la taille reelle est calculee dynamiquement au maillage et
-    n'est jamais ecrite dans cette propriete, qui reste alors a 0.
-    Retourne : str "Default" si ElementSize vaut 0, sinon la Quantity brute (traitee normalement par to_csv_cell).
+    Does: reads ElementSize and distinguishes "Default" sizing (no value entered by the user,
+    Quantity is zero) from an actually defined value.
+    Depends on: _get_prop, mesh.ElementSize (.NET Quantity, exposes .Value) - when Element Size is
+    left on "Default" in Mechanical, the actual size is computed dynamically at meshing time and
+    is never written to this property, which then stays at 0.
+    Returns: str "Default" if ElementSize is 0, otherwise the raw Quantity (handled normally by to_csv_cell).
     """
     element_size = _get_prop(mesh, "ElementSize")
     try:
@@ -201,9 +201,9 @@ def _format_element_size(mesh):
 
 def export_materials_csv(directory):
     """
-    Fait : exporte une ligne par materiau distinct utilise par les bodies du modele (module, densite, coefficient de Poisson, dilatation, conductivite, chaleur specifique).
-    Depend de : ExtAPI.DataModel, module materials (API Ansys), _material_property_values / _material_property_units.
-    Retourne : str, le chemin du CSV.
+    Does: exports one row per distinct material used by the model's bodies (modulus, density, Poisson's ratio, thermal expansion, conductivity, specific heat).
+    Depends on: ExtAPI.DataModel, materials module (Ansys API), _material_property_values / _material_property_units.
+    Returns: str, the path of the CSV.
     """
     bodies = ExtAPI.DataModel.Project.Model.GetChildren(DataModelObjectCategory.Body, True)
 
@@ -255,11 +255,11 @@ def export_materials_csv(directory):
 
 def _convert_young_modulus_to_gpa(prop_name, unit, value):
     """
-    Fait : convertit le module de Young de Pa en GPa (plus lisible dans le tableau materiaux de la slide geometrie).
-    Depend de : rien (conversion numerique simple) ; ne s'applique que si prop_name == "Young's Modulus" et
-    l'unite source vaut "Pa", pour ne jamais reconvertir une valeur deja recuperee dans une autre unite
-    (ex : projet configure en MPa/psi).
-    Retourne : tuple (unit, value) convertis si applicable, sinon (unit, value) inchanges.
+    Does: converts Young's modulus from Pa to GPa (more readable in the materials table of the geometry slide).
+    Depends on: nothing (simple numeric conversion); only applies if prop_name == "Young's Modulus" and
+    the source unit is "Pa", so a value already retrieved in another unit is never re-converted
+    (e.g.: project configured in MPa/psi).
+    Returns: tuple (unit, value) converted if applicable, otherwise (unit, value) unchanged.
     """
     if prop_name == "Young's Modulus" and unit == "Pa":
         converted_value = (value / 1.0e9) if value is not None else None
@@ -269,15 +269,15 @@ def _convert_young_modulus_to_gpa(prop_name, unit, value):
 
 def _material_property_values(material):
     """
-    Fait : aplatit les 5 groupes de proprietes materiau utilises dans le rapport en un seul dict de valeurs.
-    Depend de : materials.GetMaterialPropertyByName (API Ansys), _convert_young_modulus_to_gpa.
-    Retourne : dict, nom de propriete -> valeur (premiere valeur seulement si la propriete depend de la temperature ; Young's Modulus converti en GPa si recupere en Pa).
+    Does: flattens the 5 material property groups used in the report into a single dict of values.
+    Depends on: materials.GetMaterialPropertyByName (Ansys API), _convert_young_modulus_to_gpa.
+    Returns: dict, property name -> value (first value only if the property is temperature-dependent; Young's Modulus converted to GPa if retrieved in Pa).
     """
     values = {}
     for group in ["Elasticity", "Density", "Coefficient of Thermal Expansion",
                   "Thermal Conductivity", "Specific Heat"]:
         for prop_name, prop_data in materials.GetMaterialPropertyByName(material, group).items():
-            # prop_data = (unit, value) pour une propriete constante, ou (unit, value_T1, value_T2, ...) si dependante de la temperature : seule la 1ere valeur est gardee, pour rester sur une ligne par materiau.
+            # prop_data = (unit, value) for a constant property, or (unit, value_T1, value_T2, ...) if temperature-dependent: only the 1st value is kept, to stay at one row per material.
             unit = prop_data[0]
             value = prop_data[1] if len(prop_data) > 1 else prop_data[0]
             _, value = _convert_young_modulus_to_gpa(prop_name, unit, value)
@@ -287,9 +287,9 @@ def _material_property_values(material):
 
 def _material_property_units(material):
     """
-    Fait : aplatit les 5 groupes de proprietes materiau utilises dans le rapport en un seul dict d'unites.
-    Depend de : materials.GetMaterialPropertyByName (API Ansys), _convert_young_modulus_to_gpa.
-    Retourne : dict, nom de propriete -> unite ("GPa" pour Young's Modulus si recupere en Pa).
+    Does: flattens the 5 material property groups used in the report into a single dict of units.
+    Depends on: materials.GetMaterialPropertyByName (Ansys API), _convert_young_modulus_to_gpa.
+    Returns: dict, property name -> unit ("GPa" for Young's Modulus if retrieved in Pa).
     """
     units = {}
     for group in ["Elasticity", "Density", "Coefficient of Thermal Expansion",
@@ -302,9 +302,9 @@ def _material_property_units(material):
 
 def export_analysis_settings_csv(directory, analysis):
     """
-    Fait : exporte un tableau des parametres de steps de l'analyse (Analysis Settings), transpose (un Loadcase par colonne, une propriete par ligne) pour eviter la repetition d'un tableau vertical classique.
-    Depend de : analysis.AnalysisSettings (API Ansys), get_unique_file_path/safe_file_name/to_csv_cell (00_constants.py), le module csv.
-    Retourne : str, le chemin du CSV genere.
+    Does: exports a table of the analysis's step parameters (Analysis Settings), transposed (one Loadcase per column, one property per row) to avoid the repetitiveness of a classic vertical table.
+    Depends on: analysis.AnalysisSettings (Ansys API), get_unique_file_path/safe_file_name/to_csv_cell (00_constants.py), the csv module.
+    Returns: str, the path of the generated CSV.
     """
     settings = analysis.AnalysisSettings
 
@@ -355,7 +355,7 @@ def export_analysis_settings_csv(directory, analysis):
     return filepath
 
 
-SOLUTION_INFO_PROPERTIES = [  # nom de propriete Solution -> libelle affiche ; liste (et non dict) pour garder un ordre d'affichage stable
+SOLUTION_INFO_PROPERTIES = [  # Solution property name -> displayed label; list (not a dict) to keep a stable display order
     ("ElapsedRunTime", "Elapsed run time"),
     ("MemoryUsed", "Memory used"),
     ("ResultFileSize", "Result file size"),
@@ -364,9 +364,9 @@ SOLUTION_INFO_PROPERTIES = [  # nom de propriete Solution -> libelle affiche ; l
 
 def export_solution_info_csv(directory, solution, analysis_name):
     """
-    Fait : exporte un tableau des informations de resolution (temps de calcul, memoire utilisee, taille du fichier resultat).
-    Depend de : solution.PropertyByName (API Ansys), constante SOLUTION_INFO_PROPERTIES, get_unique_file_path/safe_file_name/to_csv_cell (00_constants.py), le module csv.
-    Retourne : str, le chemin du CSV genere.
+    Does: exports a table of solution information (run time, memory used, result file size).
+    Depends on: solution.PropertyByName (Ansys API), SOLUTION_INFO_PROPERTIES constant, get_unique_file_path/safe_file_name/to_csv_cell (00_constants.py), the csv module.
+    Returns: str, the path of the generated CSV.
     """
     rows = []
     for prop_name, label in SOLUTION_INFO_PROPERTIES:
@@ -375,8 +375,8 @@ def export_solution_info_csv(directory, solution, analysis_name):
         except Exception:
             pass
 
-    # analysis_name (pas solution.Name, generique type "Solution" sur toutes les analyses) pour un
-    # nom de fichier distinct par analyse en projet multi-analyses.
+    # analysis_name (not solution.Name, which is generic like "Solution" across all analyses) for a
+    # distinct file name per analysis in a multi-analysis project.
     filepath = get_unique_file_path(directory, "SolutionInfo_" + safe_file_name(analysis_name), ".csv")
     with open(filepath, "wb") as f:
         writer = csv.writer(f, delimiter=";")

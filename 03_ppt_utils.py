@@ -1,4 +1,4 @@
-# 03_ppt_utils.py : constructeur de rapport PowerPoint - possede la session COM Interop et expose des methodes "add slide" basees sur les layouts du template corporate. Depend de 00_constants.py (doit etre execute avant ce fichier).
+# 03_ppt_utils.py: PowerPoint report builder - owns the COM Interop session and exposes "add slide" methods based on the corporate template layouts. Depends on 00_constants.py (must be executed before this file).
 
 import clr
 import csv
@@ -14,9 +14,9 @@ import Microsoft.Office.Core as Office
 
 def _build_working_copy_base_name():
     """
-    Fait : construit un nom de base (sans extension), unique par jour.
-    Depend de : datetime.date.today().
-    Retourne : str, ex. "automatic_report_generation_17072025".
+    Does: builds a base name (without extension), unique per day.
+    Depends on: datetime.date.today().
+    Returns: str, e.g. "automatic_report_generation_17072025".
     """
     today = datetime.date.today()
     return "automatic_report_generation_{:02d}{:02d}{:04d}".format(today.day, today.month, today.year)
@@ -24,11 +24,11 @@ def _build_working_copy_base_name():
 
 def rename_time_header_to_loadcase(data):
     """
-    Fait : remplace, dans la ligne d'en-tete d'un tableau CSV, toute cellule valant exactement "Time [s]" par "Loadcase".
-    Depend de : rien (modifie data en place).
-    Retourne : rien (effet de bord sur data).
+    Does: replaces, in the header row of a CSV table, any cell equal exactly to "Time [s]" with "Loadcase".
+    Depends on: nothing (modifies data in place).
+    Returns: nothing (side effect on data).
     """
-    # Plus parlant pour un ingenieur que le nom brut de colonne renvoye par le Tabular Data pane de Mechanical.
+    # More meaningful to an engineer than the raw column name returned by Mechanical's Tabular Data pane.
     if not data:
         return
     header = data[0]
@@ -39,44 +39,44 @@ def rename_time_header_to_loadcase(data):
 
 class PPTReportBuilder(object):
     """
-    Encapsule une unique session PowerPoint Interop ouverte sur une copie de travail du template corporate. Toutes les methodes create_..._slide ajoutent des slides a LA MEME presentation au lieu de rouvrir PowerPoint a chaque slide.
+    Wraps a single PowerPoint Interop session opened on a working copy of the corporate template. All add_..._slide methods add slides to the SAME presentation instead of reopening PowerPoint for every slide.
     """
 
     def __init__(self, template_path):
         """
-        Fait : cree une copie de travail du template et ouvre une session PowerPoint COM dessus.
-        Depend de : shutil.copyfile, get_unique_file_path (00_constants.py), Microsoft.Office.Interop.PowerPoint.
-        Retourne : rien (initialise self.app / self.presentation / self.working_copy_path).
+        Does: creates a working copy of the template and opens a PowerPoint COM session on it.
+        Depends on: shutil.copyfile, get_unique_file_path (00_constants.py), Microsoft.Office.Interop.PowerPoint.
+        Returns: nothing (initializes self.app / self.presentation / self.working_copy_path).
         """
-        # Le template original n'est JAMAIS ouvert directement : si l'utilisateur fait Ctrl+S dans PowerPoint pendant la generation, c'est cette copie qui est ecrasee, jamais l'original.
+        # The original template is NEVER opened directly: if the user hits Ctrl+S in PowerPoint during generation, this copy gets overwritten, never the original.
         self.working_copy_path = get_unique_file_path(
             REPORT_OUTPUT_FOLDER, _build_working_copy_base_name(), ".pptx")
         shutil.copyfile(template_path, self.working_copy_path)
         print "Template working copy opened: " + self.working_copy_path
 
         self.app = PPT.ApplicationClass()
-        # self.app.Visible = True est necessaire : une session laissee invisible s'est reveleee instable sur un rapport avec beaucoup de slides (COMException "Presentation.SlideMaster : Object does not exist" en cours de route, plus aucune slide ne peut alors etre ajoutee/sauvegardee). La fenetre se ferme normalement en fin de generation (voir close()).
+        # self.app.Visible = True is necessary: a session left invisible has proven unstable on reports with many slides (COMException "Presentation.SlideMaster: Object does not exist" partway through, after which no more slides can be added/saved). The window closes normally at the end of generation (see close()).
         self.app.Visible = True
         self.presentation = self.app.Presentations.Open(self.working_copy_path, WithWindow=True)
 
     def _add_slide(self, layout_index):
         """
-        Fait : ajoute une slide vierge a la fin de la presentation, sur le layout personnalise donne.
-        Depend de : self.presentation.SlideMaster.CustomLayouts.
-        Retourne : PPT.Slide, la slide creee.
+        Does: adds a blank slide at the end of the presentation, using the given custom layout.
+        Depends on: self.presentation.SlideMaster.CustomLayouts.
+        Returns: PPT.Slide, the created slide.
         """
         layout = self.presentation.SlideMaster.CustomLayouts[layout_index]
         return self.presentation.Slides.AddSlide(self.presentation.Slides.Count + 1, layout)
 
     def add_image_table_slide(self, title, subtitle, img_path=None, csv_path=None, comment=" "):
         """
-        Fait : ajoute une slide "image + table" (titre, sous-titre, une image, une table, un commentaire).
-        Depend de : self._add_slide (LAYOUT_IMAGE_TABLE), self.add_csv_table.
-        Retourne : PPT.Slide, la slide creee.
+        Does: adds an "image + table" slide (title, subtitle, one image, one table, one comment).
+        Depends on: self._add_slide (LAYOUT_IMAGE_TABLE), self.add_csv_table.
+        Returns: PPT.Slide, the created slide.
         """
         slide = self._add_slide(LAYOUT_IMAGE_TABLE)
 
-        # Affectation du texte APRES la creation de la slide : le faire sur le layout directement modifierait tout le master template.
+        # Text assigned AFTER the slide is created: doing it directly on the layout would modify the whole master template.
         slide.Shapes[8].TextFrame.TextRange.Text = comment
         slide.Shapes[2].TextFrame.TextRange.Text = title
         slide.Shapes[4].TextFrame.TextRange.Text = subtitle
@@ -100,9 +100,9 @@ class PPTReportBuilder(object):
 
     def add_table_slide(self, title, subtitle, csv_path):
         """
-        Fait : ajoute une slide "table seule" (titre, sous-titre, table).
-        Depend de : self._add_slide (LAYOUT_TABLE_ONLY), self.add_csv_table.
-        Retourne : PPT.Slide, la slide creee.
+        Does: adds a "table only" slide (title, subtitle, table).
+        Depends on: self._add_slide (LAYOUT_TABLE_ONLY), self.add_csv_table.
+        Returns: PPT.Slide, the created slide.
         """
         slide = self._add_slide(LAYOUT_TABLE_ONLY)
         slide.Shapes[1].TextFrame.TextRange.Text = title
@@ -117,13 +117,13 @@ class PPTReportBuilder(object):
 
     def add_analysis_context_slide(self, title, subtitle, img_path, settings_csv_path, solution_csv_path):
         """
-        Fait : ajoute la slide de contexte "Analysis Parameters" (image de vue d'ensemble + 2 tableaux : parametres de steps, infos de resolution).
-        Depend de : self._add_slide (LAYOUT_IMAGE_TABLE), self.add_csv_table.
-        Retourne : PPT.Slide, la slide creee.
+        Does: adds the "Analysis Parameters" context slide (overview image + 2 tables: step settings, solution info).
+        Depends on: self._add_slide (LAYOUT_IMAGE_TABLE), self.add_csv_table.
+        Returns: PPT.Slide, the created slide.
         """
-        # Reutilise le layout LAYOUT_IMAGE_TABLE : son emplacement "table" (shape 1) recoit le tableau
-        # des steps (meme position que sur les autres slides image+table), et son emplacement
-        # "commentaire" (shape 8, plus reduit) recoit le second tableau (infos de resolution, 3 lignes max).
+        # Reuses the LAYOUT_IMAGE_TABLE layout: its "table" placeholder (shape 1) receives the steps
+        # table (same position as on the other image+table slides), and its "comment" placeholder
+        # (shape 8, smaller) receives the second table (solution info, 3 rows max).
         slide = self._add_slide(LAYOUT_IMAGE_TABLE)
 
         slide.Shapes[2].TextFrame.TextRange.Text = title
@@ -155,12 +155,12 @@ class PPTReportBuilder(object):
 
     def add_csv_table(self, slide, csv_path, left, top, width):
         """
-        Fait : lit un CSV (delimiteur ';') et l'insere en table formatee sur la slide (en-tete gras/grise, bordures fines, texte centre).
-        Depend de : le module csv, rename_time_header_to_loadcase, MAX_TABLE_ROWS/MAX_TABLE_COLUMNS (00_constants.py).
-        Retourne : rien (modifie slide ; ne fait rien si le CSV est vide ou depasse les limites de taille).
+        Does: reads a CSV (delimiter ';') and inserts it as a formatted table on the slide (bold/gray header, thin borders, centered text).
+        Depends on: the csv module, rename_time_header_to_loadcase, MAX_TABLE_ROWS/MAX_TABLE_COLUMNS (00_constants.py).
+        Returns: nothing (modifies slide; does nothing if the CSV is empty or exceeds the size limits).
         """
         data = []
-        # Lecture binaire + decodage UTF-8 explicite : les CSV sont ecrits en UTF-8 (unites avec caracteres speciaux type degre/micro/exposants) ; une lecture texte sans encodage explicite provoque un DecoderFallbackException.
+        # Binary read + explicit UTF-8 decoding: CSVs are written in UTF-8 (units with special characters like degree/micro/superscripts); a text read without explicit encoding raises a DecoderFallbackException.
         with open(csv_path, "rb") as f:
             reader = csv.reader(f, delimiter=';')
             for row in reader:
@@ -183,7 +183,7 @@ class PPTReportBuilder(object):
 
         table = slide.Shapes.AddTable(rows, cols, left, top, width).Table
 
-        # Bordures posees UNE FOIS PAR LIGNE (Rows(r).Cells.Borders accepte une plage de cellules), pas par cellule x par cote : chaque aller-retour COM est couteux, et c'etait la partie la plus lente du formatage (jusqu'a 45s pour 8 lignes avant cette optimisation). Font/TextRange, eux, restent necessairement par cellule (pas d'equivalent en plage).
+        # Borders set ONCE PER ROW (Rows(r).Cells.Borders accepts a range of cells), not per cell x per side: every COM round-trip is costly, and this was the slowest part of formatting (up to 45s for 8 rows before this optimization). Font/TextRange, however, still have to be set per cell (no range equivalent).
         for r in range(1, rows + 1):
             row_cells = table.Rows(r).Cells
             for border_index in range(1, 5):
@@ -198,9 +198,9 @@ class PPTReportBuilder(object):
                 text_range = text_frame.TextRange
                 text_range.Text = data[r][c]
                 text_range.Font.Size = 7
-                text_range.ParagraphFormat.Alignment = 2  # 2 = centre
-                text_frame.VerticalAnchor = 3  # 3 = milieu
-                # Marge haut/bas ramenee a 3pt (marges gauche/droite inchangees) : c'est cette marge interne, pas la taille de police, qui empeche PowerPoint de reduire la hauteur de ligne en dessous d'un certain seuil.
+                text_range.ParagraphFormat.Alignment = 2  # 2 = center
+                text_frame.VerticalAnchor = 3  # 3 = middle
+                # Top/bottom margin reduced to 3pt (left/right margins unchanged): it's this internal margin, not the font size, that prevents PowerPoint from shrinking row height below a certain threshold.
                 text_frame.MarginTop = 3
                 text_frame.MarginBottom = 3
 
@@ -209,33 +209,33 @@ class PPTReportBuilder(object):
                     shape.Fill.ForeColor.RGB = 0x545454
                     shape.Fill.Solid()
 
-        # Hauteur forcee a une valeur volontairement trop petite : PowerPoint la ramene automatiquement au minimum reel necessaire pour loger le texte - seul moyen de resserrer un tableau deja cree (AddTable alloue par defaut une hauteur bien superieure au necessaire pour du texte en taille 7, ce qui peut faire deborder la slide).
+        # Height forced to a deliberately too-small value: PowerPoint automatically brings it back to the real minimum needed to fit the text - the only way to tighten a table that's already been created (AddTable allocates by default a height well above what's needed for size-7 text, which can overflow the slide).
         for r in range(1, rows + 1):
             table.Rows(r).Height = 1
 
     def save_as(self, output_path):
         """
-        Fait : enregistre la presentation dans un nouveau fichier (le template original n'est jamais ecrase).
-        Depend de : self.presentation.SaveAs.
-        Retourne : rien (effet de bord : cree/ecrase output_path).
+        Does: saves the presentation to a new file (the original template is never overwritten).
+        Depends on: self.presentation.SaveAs.
+        Returns: nothing (side effect: creates/overwrites output_path).
         """
         self.presentation.SaveAs(output_path)
         print "Report saved: " + output_path
 
     def close(self):
         """
-        Fait : enregistre la copie de travail, ferme la presentation et quitte l'application PowerPoint.
-        Depend de : self.presentation.Save/Close, self.app.Quit.
-        Retourne : rien (effet de bord ; appele en cas d'echec de la generation, pour ne jamais laisser une session PowerPoint invisible en memoire).
+        Does: saves the working copy, closes the presentation and quits the PowerPoint application.
+        Depends on: self.presentation.Save/Close, self.app.Quit.
+        Returns: nothing (side effect; called when generation fails, so a PowerPoint session is never left invisible in memory).
         """
-        self.presentation.Save()  # Save() simple, pas SaveAs : le fichier a deja son nom/chemin final (working_copy_path)
+        self.presentation.Save()  # Simple Save(), not SaveAs: the file already has its final name/path (working_copy_path)
         self.presentation.Close()
         self.app.Quit()
 
     def keep_open(self):
         """
-        Fait : ne fait rien sur la presentation (pas de Save, pas de Close, pas de Quit) - la laisse telle quelle, ouverte et affichee.
-        Depend de : rien.
-        Retourne : rien (effet de bord : aucun ; existe pour rendre explicite, a la fin d'une generation reussie, le choix de laisser le rapport ouvert sans l'enregistrer).
+        Does: does nothing to the presentation (no Save, no Close, no Quit) - leaves it as-is, open and displayed.
+        Depends on: nothing.
+        Returns: nothing (side effect: none; exists to make explicit, at the end of a successful generation, the choice to leave the report open without saving it).
         """
         pass

@@ -1,4 +1,4 @@
-# AnsysReportGenerator_WPF.py : point d'entree WPF pour l'application de generation de rapport. Charge les modules 00_constants.py a 05_interactive_slides.py (meme dossier que ce script) via execfile(), puis construit la fenetre depuis AnsysReportGenerator_WPF.xaml.
+# AnsysReportGenerator_WPF.py : WPF entry point for the report generation application. Loads modules 00_constants.py to 05_interactive_slides.py (same folder as this script) via execfile(), then builds the window from AnsysReportGenerator_WPF.xaml.
 
 import os
 import shutil
@@ -15,9 +15,9 @@ clr.AddReference("System")
 
 from System.Diagnostics import Process
 
-# System.Windows.Forms/Color restent necessaires ici : 05_interactive_slides.py appelle
-# SWF.Application.DoEvents() (_set_result_display_time) et utilise des Color nommees pour
-# CURVE_COLOR_OPTIONS, meme si CE script batit son interface en WPF.
+# System.Windows.Forms/Color remain necessary here: 05_interactive_slides.py calls
+# SWF.Application.DoEvents() (_set_result_display_time) and uses named Color values for
+# CURVE_COLOR_OPTIONS, even though THIS script builds its interface in WPF.
 import System.Windows.Forms as SWF
 from System.Drawing import Color
 
@@ -44,21 +44,21 @@ from System.Windows.Input import Key, MouseButtonState, Cursors
 from System import Uri, UriKind
 
 
-# --- SECTION 1 - Chargement des modules du projet (00 -> 05) ---
-# execfile() execute chaque fichier dans le namespace global de ce script, comme si son
-# contenu avait ete copie-colle dans la console a la suite des autres.
+# --- SECTION 1 - Loading the project modules (00 -> 05) ---
+# execfile() executes each file in this script's global namespace, as if its
+# content had been copy-pasted into the console right after the others.
 
-# PROJECT_DIR = dossier "Report Generator" du projet Ansys courant, qui regroupe TOUT : ce
-# script, AnsysReportGenerator_WPF.xaml, les modules 00_constants.py -> 05_interactive_slides.py
-# et le template PowerPoint (structure volontairement a plat, un seul dossier a placer a cote de
-# "user_files" dans le repertoire de fichiers du projet Ansys).
+# PROJECT_DIR = "Report Generator" folder of the current Ansys project, which groups EVERYTHING: this
+# script, AnsysReportGenerator_WPF.xaml, the modules 00_constants.py -> 05_interactive_slides.py
+# and the PowerPoint template (deliberately flat structure, a single folder to place next to
+# "user_files" in the Ansys project's file directory).
 #
-# Localise via l'API Ansys elle-meme (ExtAPI.DataModel.Project.ProjectDirectory, le dossier
-# "<Projet>_files" du projet Mechanical courant) plutot que via __file__/os.getcwd()/sys.argv :
-# ces derniers se sont averes peu fiables selon la facon dont Mechanical execute le script (ils
-# peuvent pointer vers un chemin propre a la session plutot que l'emplacement reel du script),
-# alors qu'ExtAPI est garanti disponible (utilise partout ailleurs dans ce projet) et donne
-# toujours le vrai repertoire du projet, quel que soit le mode de lancement du script.
+# Located via the Ansys API itself (ExtAPI.DataModel.Project.ProjectDirectory, the
+# "<Project>_files" folder of the current Mechanical project) rather than via __file__/os.getcwd()/sys.argv:
+# the latter proved unreliable depending on how Mechanical runs the script (they
+# can point to a path specific to the session rather than the script's actual location),
+# whereas ExtAPI is guaranteed to be available (used everywhere else in this project) and always
+# gives the real project directory, regardless of how the script is launched.
 try:
     _ansys_project_directory = ExtAPI.DataModel.Project.ProjectDirectory
 except Exception as _ex:
@@ -105,12 +105,12 @@ for _module_file in _MODULE_FILES:
 print "All modules loaded."
 
 
-# --- Chemins de fichiers modifiables depuis l'onglet "Fichiers" ---
-# Valeurs d'origine de 00_constants.py, capturees une seule fois ici (avant toute
-# modification depuis l'UI) pour que le bouton "Reinitialiser les chemins" puisse
-# toujours y revenir. Cle = nom du global correspondant dans 00_constants.py, reaffecte
-# directement via globals()[cle] = ... : tous les modules 00_constants.py -> 05_interactive_slides.py
-# lisent ce meme global au moment de l'appel, aucun autre changement necessaire ailleurs.
+# --- File paths editable from the "Files" tab ---
+# Original values from 00_constants.py, captured once here (before any
+# modification from the UI) so that the "Reset paths" button can
+# always revert to them. Key = name of the corresponding global in 00_constants.py, reassigned
+# directly via globals()[key] = ...: all modules 00_constants.py -> 05_interactive_slides.py
+# read this same global at call time, no other change needed elsewhere.
 FILE_PATH_SETTINGS = [
     ("TEMPLATE_PATH", "txtPathTemplate", "btnBrowseTemplate", "file"),
     ("IMAGE_EXPORT_FOLDER", "txtPathImages", "btnBrowseImages", "folder"),
@@ -122,14 +122,14 @@ FILE_PATH_SETTINGS = [
 _DEFAULT_FILE_PATHS = dict((name, globals()[name]) for name, _, _, _ in FILE_PATH_SETTINGS)
 
 
-# --- SECTION 2 - Helpers partages (couleurs de statut, recherche) ---
+# --- SECTION 2 - Shared helpers (status colors, search) ---
 
-# --- Couleurs de statut des lignes de selection (3 etats) ---
-# 3 etats bases sur la selection ET la configuration :
-#   - non selectionnee (quel que soit son etat de configuration)
-#   - selectionnee, pas encore configuree via "..."
-#   - selectionnee ET configuree via "..."
-# (voir les 3 brushes ci-dessous pour les couleurs exactes de chaque etat)
+# --- Status colors for selection rows (3 states) ---
+# 3 states based on selection AND configuration:
+#   - not selected (regardless of its configuration state)
+#   - selected, not yet configured via "..."
+#   - selected AND configured via "..."
+# (see the 3 brushes below for the exact colors of each state)
 
 ROW_STATUS_NOT_SELECTED_BRUSH = SolidColorBrush(WpfColor.FromRgb(0xFF, 0xD0, 0x00))
 ROW_STATUS_SELECTED_BRUSH = SolidColorBrush(WpfColor.FromRgb(0xBE, 0xE3, 0xDB))
@@ -138,9 +138,9 @@ ROW_STATUS_CONFIGURED_BRUSH = SolidColorBrush(WpfColor.FromRgb(0x7D, 0xCE, 0x82)
 
 def _row_status_brush(row):
     """
-    Fait : determine la couleur de fond d'une ligne de selection selon son etat coche/configure.
-    Depend de : row.checkbox.IsChecked, row.row_config.configured, les 3 brushes ROW_STATUS_*.
-    Retourne : SolidColorBrush, la couleur de fond a appliquer a row.border.
+    Does: determines the background color of a selection row based on its checked/configured state.
+    Depends on: row.checkbox.IsChecked, row.row_config.configured, the 3 ROW_STATUS_* brushes.
+    Returns: SolidColorBrush, the background color to apply to row.border.
     """
     if not row.checkbox.IsChecked:
         return ROW_STATUS_NOT_SELECTED_BRUSH
@@ -151,29 +151,29 @@ def _row_status_brush(row):
 
 def _general_slide_status_text(row_config):
     """
-    Fait : construit le texte de statut affiche sous le titre des cartes Geometrie/Maillage
-    ("Slides d'ensemble", onglet 01) - etat de configuration et vue effective.
-    Depend de : row_config.configured/view_name.
-    Retourne : str, ex. "a configurer - vue courante" ou "configure - vue=Vue ISO".
+    Does: builds the status text shown under the title of the Geometry/Mesh cards
+    ("Overview slides" tab, tab 01) - configuration state and effective view.
+    Depends on: row_config.configured/view_name.
+    Returns: str, e.g. "to configure - current view" or "configured - view=ISO View".
     """
     state = "configured" if row_config.configured else "to configure"
     view = "view={}".format(row_config.view_name) if row_config.view_name else "current view"
     return "{} - {}".format(state, view)
 
 
-# --- Filtre par type de contact (section "Contacts a afficher") ---
-# Base sur le PREFIXE du nom (pas sur contact.ContactType, l'API Ansys) : un contact renomme par
-# l'ingenieur (nom "personnalise") doit tomber dans "Autres" meme si son type reste Frictional/Bonded
-# cote solveur - c'est le nom affiche dans la liste, pas le type technique, que ce filtre trie.
+# --- Filter by contact type (section "Contacts to display") ---
+# Based on the name PREFIX (not on contact.ContactType, the Ansys API): a contact renamed by
+# the engineer ("custom" name) must fall into "Autres" even if its type remains Frictional/Bonded
+# on the solver side - it's the name shown in the list, not the technical type, that this filter sorts on.
 
 CONTACTS_FILTER_OPTIONS = ["Tous", "Frictional", "Bonded", "Autres"]
 
 
 def _classify_contact_name(name):
     """
-    Fait : classe un nom de Contact Region selon son prefixe ("Frictional-...", "Bonded-...", ou personnalise).
-    Depend de : rien (comparaison de chaine, insensible a la casse).
-    Retourne : str, "Frictional"/"Bonded"/"Autres".
+    Does: classifies a Contact Region name based on its prefix ("Frictional-...", "Bonded-...", or custom).
+    Depends on: nothing (string comparison, case-insensitive).
+    Returns: str, "Frictional"/"Bonded"/"Autres".
     """
     lowered = (name or "").strip().lower()
     if lowered.startswith("frictional"):
@@ -183,59 +183,59 @@ def _classify_contact_name(name):
     return "Autres"
 
 
-# --- Champs de recherche : texte indicatif grise ---
+# --- Search fields: greyed-out placeholder text ---
 
 SEARCH_PLACEHOLDER = "Search..."
-SEARCH_PLACEHOLDER_BRUSH = SolidColorBrush(WpfColor.FromRgb(0x79, 0x7E, 0x8A))  # meme gris que TextMutedBrush (xaml)
-SEARCH_TEXT_BRUSH = SolidColorBrush(WpfColor.FromRgb(0x00, 0x00, 0x00))  # meme noir que TextPrimaryBrush (xaml)
+SEARCH_PLACEHOLDER_BRUSH = SolidColorBrush(WpfColor.FromRgb(0x79, 0x7E, 0x8A))  # same grey as TextMutedBrush (xaml)
+SEARCH_TEXT_BRUSH = SolidColorBrush(WpfColor.FromRgb(0x00, 0x00, 0x00))  # same black as TextPrimaryBrush (xaml)
 SEARCH_BOX_DEFAULT_BACKGROUND = SolidColorBrush(WpfColor.FromRgb(0xFA, 0xFB, 0xFC))
 SEARCH_BOX_NO_MATCH_BACKGROUND = SolidColorBrush(WpfColor.FromRgb(0xF8, 0xD9, 0xDC))
 SEARCH_HIGHLIGHT_BRUSH = SolidColorBrush(WpfColor.FromRgb(0x00, 0x8D, 0xD5))
 
-# --- Cartes d'apercu : couleur au survol (au lieu d'un zoom) ---
+# --- Preview cards: hover color (instead of a zoom effect) ---
 
 CARD_NORMAL_BACKGROUND = SolidColorBrush(WpfColor.FromRgb(0xFF, 0xFF, 0xFF))
-CARD_HOVER_BACKGROUND = SolidColorBrush(WpfColor.FromRgb(0xE7, 0xEC, 0xF8))  # meme bleu que HoverBrush (xaml)
+CARD_HOVER_BACKGROUND = SolidColorBrush(WpfColor.FromRgb(0xE7, 0xEC, 0xF8))  # same blue as HoverBrush (xaml)
 
-# Largeur de la carte.
+# Card width.
 CARD_WIDTH = 340
 
-# Conteneur de liste (voir _build_preview_list_container) : hauteur FIXE (pas un plafond) pour que
-# toutes les cartes d'apercu partagent la meme taille, qu'elles aient 1 ou 50 elements coches -
-# sinon une carte a peu d'elements (ex: Maillage) parait minuscule a cote d'une carte pleine (ex:
-# Boundary Conditions). Au-dela de cette hauteur, la liste reste consultable via defilement,
-# signale par un fondu (PREVIEW_LIST_FADE_HEIGHT) en bas.
+# List container (see _build_preview_list_container): FIXED height (not a ceiling) so that
+# all preview cards share the same size, whether they have 1 or 50 checked items -
+# otherwise a card with few items (e.g. Mesh) looks tiny next to a full card (e.g.
+# Boundary Conditions). Beyond this height, the list remains browsable via scrolling,
+# signaled by a fade (PREVIEW_LIST_FADE_HEIGHT) at the bottom.
 PREVIEW_LIST_DEFAULT_HEIGHT = 130
 PREVIEW_LIST_FADE_HEIGHT = 26
 PREVIEW_LIST_BACKGROUND_COLOR = WpfColor.FromRgb(0xF1, 0xF2, 0xF5)
 PREVIEW_LIST_BACKGROUND = SolidColorBrush(PREVIEW_LIST_BACKGROUND_COLOR)
 
-# Fondu bas des listes de selection a cocher (onglets 01/02/03, cartes CardBorder) : meme principe
-# que PREVIEW_LIST_FADE_HEIGHT ci-dessus (visible uniquement si la liste deborde reellement), mais
-# applique via OpacityMask directement sur le ScrollViewer existant plutot qu'un Border de recouvrement
-# separe - inutile ici puisque ces listes reposent toujours sur un fond CardBorder blanc uni (voir
-# ReportGeneratorApp._attach_list_fade).
+# Bottom fade of the checkable selection lists (tabs 01/02/03, CardBorder cards): same principle
+# as PREVIEW_LIST_FADE_HEIGHT above (visible only if the list actually overflows), but
+# applied via OpacityMask directly on the existing ScrollViewer rather than a separate
+# overlay Border - unnecessary here since these lists always sit on a solid white CardBorder
+# background (see ReportGeneratorApp._attach_list_fade).
 ITEM_LIST_FADE_HEIGHT = 26
 
-# --- Ressources partagees avec AnsysReportGenerator_WPF.xaml ---
-# Les champs des panneaux de configuration ("..." de chaque ligne, panneau lateral global -
-# voir SECTION 4/5/5bis/6 et ReportGeneratorApp._open_config_panel) sont batis en code Python
-# (Border/TextBlock/ComboBox... crees directement, pas charges depuis le XAML) et ne peuvent donc
-# pas resoudre les {StaticResource ...} de la fenetre principale via le markup XAML. Plutot que de
-# redefinir ces styles/couleurs a la main cote Python (source constatee de desynchronisation avec
-# le .xaml), _shared_resources reference directement le MEME ResourceDictionary que la fenetre
-# principale, assigne une seule fois dans ReportGeneratorApp.__init__ (une seule instance d'app
-# par execution, voir SECTION 8) - fonctionne meme si ces controles rejoignent ensuite le meme
-# arbre visuel que la fenetre principale (ce qui est le cas depuis le passage au panneau lateral).
+# --- Resources shared with AnsysReportGenerator_WPF.xaml ---
+# The fields of the configuration panels ("..." on each row, global side panel -
+# see SECTION 4/5/5bis/6 and ReportGeneratorApp._open_config_panel) are built in Python code
+# (Border/TextBlock/ComboBox... created directly, not loaded from the XAML) and therefore cannot
+# resolve the main window's {StaticResource ...} through the XAML markup. Rather than
+# redefining these styles/colors by hand on the Python side (a source of drift with
+# the .xaml observed in practice), _shared_resources references the SAME ResourceDictionary as the
+# main window directly, assigned once in ReportGeneratorApp.__init__ (a single app instance
+# per run, see SECTION 8) - works even once these controls later join the same
+# visual tree as the main window (which is the case since the move to the side panel).
 
-_shared_resources = None  # assigne dans ReportGeneratorApp.__init__
+_shared_resources = None  # assigned in ReportGeneratorApp.__init__
 
 
 def _make_field_label(text):
     """
-    Fait : cree un TextBlock utilise comme etiquette de champ dans les dialogues de configuration.
-    Depend de : _shared_resources["TextPrimaryBrush"].
-    Retourne : TextBlock, l'etiquette prete a etre ajoutee au panneau.
+    Does: creates a TextBlock used as a field label in the configuration dialogs.
+    Depends on: _shared_resources["TextPrimaryBrush"].
+    Returns: TextBlock, the label ready to be added to the panel.
     """
     label = TextBlock()
     label.Text = text
@@ -247,9 +247,9 @@ def _make_field_label(text):
 
 def _themed_textbox():
     """
-    Fait : cree un TextBox stylee comme le champ generique des boites de dialogue.
-    Depend de : _shared_resources["DialogTextBox"] (x:Key defini dans le XAML).
-    Retourne : TextBox, le champ stylise pret a l'emploi.
+    Does: creates a TextBox styled like the generic dialog field.
+    Depends on: _shared_resources["DialogTextBox"] (x:Key defined in the XAML).
+    Returns: TextBox, the styled field ready to use.
     """
     box = TextBox()
     box.Style = _shared_resources["DialogTextBox"]
@@ -258,9 +258,9 @@ def _themed_textbox():
 
 def _themed_button(primary=False):
     """
-    Fait : cree un Button style PrimaryButton (accent) ou SecondaryButton (neutre).
-    Depend de : _shared_resources["PrimaryButton"/"SecondaryButton"], memes ressources que la fenetre principale.
-    Retourne : Button, le bouton stylise pret a l'emploi.
+    Does: creates a Button styled as PrimaryButton (accent) or SecondaryButton (neutral).
+    Depends on: _shared_resources["PrimaryButton"/"SecondaryButton"], same resources as the main window.
+    Returns: Button, the styled button ready to use.
     """
     btn = Button()
     btn.Style = _shared_resources["PrimaryButton" if primary else "SecondaryButton"]
@@ -269,12 +269,12 @@ def _themed_button(primary=False):
 
 def _build_close_icon(size=10, thickness=1.4):
     """
-    Fait : construit un petit "x" vectoriel (2 lignes croisees) a utiliser comme Button.Content
-    pour un bouton de fermeture "x" - un simple TextBlock("x") n'est jamais parfaitement centre
-    verticalement dans son cadre (metriques de police, ascender/descender), meme avec
-    HorizontalAlignment/VerticalAlignment=Center sur le ContentPresenter.
-    Depend de : Canvas/Line (System.Windows.Shapes), _shared_resources["TextPrimaryBrush"].
-    Retourne : Canvas, l'icone prete a etre assignee a Button.Content (une instance neuve a chaque appel).
+    Does: builds a small vector "x" (2 crossed lines) to use as Button.Content
+    for an "x" close button - a plain TextBlock("x") is never perfectly centered
+    vertically within its frame (font metrics, ascender/descender), even with
+    HorizontalAlignment/VerticalAlignment=Center on the ContentPresenter.
+    Depends on: Canvas/Line (System.Windows.Shapes), _shared_resources["TextPrimaryBrush"].
+    Returns: Canvas, the icon ready to be assigned to Button.Content (a fresh instance on each call).
     """
     canvas = Canvas()
     canvas.Width = size
@@ -295,19 +295,19 @@ def _build_close_icon(size=10, thickness=1.4):
     return canvas
 
 
-# --- Messages console formates (etapes cles) ---
-# Remplace les boites de dialogue bloquantes (MessageBox) pour les evenements de routine :
-# une MessageBox.Show() bloque a la fois cette fenetre ET Mechanical jusqu'a sa fermeture
-# manuelle, ce qui casse l'enchainement quand on genere plusieurs rapports a la suite.
+# --- Formatted console messages (key steps) ---
+# Replaces blocking dialog boxes (MessageBox) for routine events:
+# a MessageBox.Show() blocks both this window AND Mechanical until it is closed
+# manually, which breaks the flow when generating several reports in a row.
 
 CONSOLE_BANNER_WIDTH = 70
 
 
 def _print_console_banner(title):
     """
-    Fait : affiche un titre encadre dans la console Mechanical (etapes cles de la generation).
-    Depend de : CONSOLE_BANNER_WIDTH.
-    Retourne : rien (effet de bord : imprime dans la console).
+    Does: displays a boxed title in the Mechanical console (key generation steps).
+    Depends on: CONSOLE_BANNER_WIDTH.
+    Returns: nothing (side effect: prints to the console).
     """
     border = "=" * CONSOLE_BANNER_WIDTH
     print border
@@ -315,32 +315,32 @@ def _print_console_banner(title):
     print border
 
 
-# --- SECTION 3 - Ligne de selection WPF (case a cocher + nom + config) ---
+# --- SECTION 3 - WPF selection row (checkbox + name + config) ---
 
 class SectionRow(object):
     """
-    Une ligne de selection WPF : case a cocher + nom de l'objet + bouton de configuration
-    optionnel ("..."), liee a un row_config (SlideRowConfig / GeometryPartRowConfig /
-    ContactRowConfig / MeshPartRowConfig / SolutionInfoRowConfig, voir 05_interactive_slides.py).
+    A WPF selection row: checkbox + object name + optional configuration
+    button ("..."), linked to a row_config (SlideRowConfig / GeometryPartRowConfig /
+    ContactRowConfig / MeshPartRowConfig / SolutionInfoRowConfig, see 05_interactive_slides.py).
 
     Attributes:
-        border (Border): Conteneur exterieur de la ligne (fond de statut, surlignage recherche).
-        checkbox (CheckBox): Case a cocher "inclure cette slide".
-        text_block (TextBlock): Nom affiche de l'objet.
-        config_button (Button): Bouton "..." (None si la categorie n'a rien a configurer).
-        row_config: Objet de configuration associe.
-        display_name_func (callable): Fonction de texte d'apercu pour ce row_config.
-        panel_kind (str): Etat du panneau lateral global a afficher pour ce row_config au clic sur
-            "..." ("result"/"geometry_part"/"mesh_part"/"solution_info", None si aucune categorie).
-            Voir ReportGeneratorApp._open_config_panel.
+        border (Border): Outer container of the row (status background, search highlight).
+        checkbox (CheckBox): "Include this slide" checkbox.
+        text_block (TextBlock): Displayed name of the object.
+        config_button (Button): "..." button (None if the category has nothing to configure).
+        row_config: Associated configuration object.
+        display_name_func (callable): Preview text function for this row_config.
+        panel_kind (str): State of the global side panel to display for this row_config when
+            "..." is clicked ("result"/"geometry_part"/"mesh_part"/"solution_info", None if no category).
+            See ReportGeneratorApp._open_config_panel.
     """
 
     def __init__(self, border, checkbox, text_block, config_button, row_config,
                  display_name_func, panel_kind):
         """
-        Fait : stocke les references des controles WPF et de la configuration associee a la ligne.
-        Depend de : rien (simple assignation des parametres recus).
-        Retourne : rien (initialise les attributs de self).
+        Does: stores the references to the WPF controls and the configuration associated with the row.
+        Depends on: nothing (simple assignment of the received parameters).
+        Returns: nothing (initializes self's attributes).
         """
         self.border = border
         self.checkbox = checkbox
@@ -351,26 +351,26 @@ class SectionRow(object):
         self.panel_kind = panel_kind
 
 
-# --- SECTION 4 - Champs partages : vue / coupe / scale factor / steps ---
-# Ces champs vivaient a l'origine dans 4 boites de dialogue modales ("..." de chaque ligne de
-# selection). Elles ont ete remplacees par UN panneau lateral global (voir "PARAMETRES" dans le
-# XAML, ReportGeneratorApp._open_config_panel et les methodes _on_config_panel_*) : plus aucune
-# fenetre separee, seulement 4 "kinds" de contenu (result/geometry_part/mesh_part/solution_info)
-# affiches tour a tour dans le meme panneau. Chaque paire de fonctions ci-dessous construit
-# (_build_*) puis relit (_apply_*) un jeu de champs sur un `target` generique (voir
-# _ConfigFieldsHolder) : ce decouplage est ce qui permet au meme code de servir a la fois au
-# panneau lateral global ET au panneau de case de l'onglet "Slide combinee" (_build_row_config_fields
-# uniquement, sans steps - un resultat fige par case).
+# --- SECTION 4 - Shared fields: view / section / scale factor / steps ---
+# These fields originally lived in 4 modal dialog boxes ("..." on each selection
+# row). They have been replaced with ONE global side panel (see "PARAMETERS" in the
+# XAML, ReportGeneratorApp._open_config_panel and the _on_config_panel_* methods): no more
+# separate windows, only 4 content "kinds" (result/geometry_part/mesh_part/solution_info)
+# displayed in turn in the same panel. Each pair of functions below builds
+# (_build_*) then reads back (_apply_*) a set of fields on a generic `target` (see
+# _ConfigFieldsHolder): this decoupling is what allows the same code to serve both the
+# global side panel AND the inline row panel of the "Combined slide" tab (_build_row_config_fields
+# only, without steps - a result fixed per row).
 
 def _build_row_config_fields(target, root, row_config, views, section_plane_labels, legend_names):
     """
-    Fait : construit les champs de configuration graphique communs (vue, coupe, legende, apparence,
-    scoping, scale factor - sans la section steps) et les ajoute a root. Partage par le panneau
-    lateral global ("kind"="result", voir ReportGeneratorApp._open_config_panel) et par le panneau
-    de case inline de l'onglet "Slide combinee" (un resultat fige par case, jamais de notion de
-    step - voir ReportGeneratorApp._show_multi_result_editor).
-    Depend de : _make_field_label, get_result_display_unit, CONTOUR_VIEW_OPTIONS/LEGEND_ORIENTATION_OPTIONS/SCOPING_DISPLAY_OPTIONS.
-    Retourne : rien (pose sur target : cmb_view/cmb_section/cmb_legend/cmb_contour_view/cmb_legend_orientation/cmb_scoping_display/txt_scale).
+    Does: builds the common graphics configuration fields (view, section, legend, appearance,
+    scoping, scale factor - without the steps section) and adds them to root. Shared by the
+    global side panel ("kind"="result", see ReportGeneratorApp._open_config_panel) and by the
+    inline row panel of the "Combined slide" tab (a result fixed per row, never a notion of
+    step - see ReportGeneratorApp._show_multi_result_editor).
+    Depends on: _make_field_label, get_result_display_unit, CONTOUR_VIEW_OPTIONS/LEGEND_ORIENTATION_OPTIONS/SCOPING_DISPLAY_OPTIONS.
+    Returns: nothing (sets on target: cmb_view/cmb_section/cmb_legend/cmb_contour_view/cmb_legend_orientation/cmb_scoping_display/txt_scale).
     """
     root.Children.Add(_make_field_label("View (View Manager):"))
     target.cmb_view = ComboBox()
@@ -396,11 +396,11 @@ def _build_row_config_fields(target, root, row_config, views, section_plane_labe
         target.cmb_section.SelectedIndex = 0
     root.Children.Add(target.cmb_section)
 
-    # L'unite affichee ici est EXACTEMENT celle qui sera passee a ExtAPI.Graphics.ImportLegend()
-    # lors de la generation : diagnostic visuel immediat, sans passer par la console.
-    # force_evaluate=False : lecture indicative seule (pas de reevaluation couteuse du
-    # resultat) pour que l'ouverture de cette fenetre reste instantanee ; la vraie application
-    # de la legende (apply_legend_if_exists) reevalue toujours a fond le resultat.
+    # The unit displayed here is EXACTLY the one that will be passed to ExtAPI.Graphics.ImportLegend()
+    # during generation: immediate visual diagnostic, without going through the console.
+    # force_evaluate=False: indicative read only (no costly re-evaluation of the
+    # result) so that opening this window remains instantaneous; the actual application
+    # of the legend (apply_legend_if_exists) always fully re-evaluates the result.
     detected_unit = get_result_display_unit(row_config.obj, force_evaluate=False)
     lbl_unit = TextBlock()
     lbl_unit.Text = "Unit detected for ImportLegend: " + (detected_unit if detected_unit else "none")
@@ -465,12 +465,12 @@ def _build_row_config_fields(target, root, row_config, views, section_plane_labe
 
 def _apply_row_config_fields(target, row_config):
     """
-    Fait : lit les champs communs (vue/coupe/legende/apparence/scoping/scale factor) depuis target
-    et les applique a row_config. Partage par le panneau lateral global (_on_config_panel_apply) et
-    par le panneau de case inline de l'onglet "Slide combinee" (voir _build_row_config_fields).
-    Depend de : target.cmb_view/cmb_section/cmb_legend/cmb_contour_view/cmb_legend_orientation/cmb_scoping_display/
+    Does: reads the common fields (view/section/legend/appearance/scoping/scale factor) from target
+    and applies them to row_config. Shared by the global side panel (_on_config_panel_apply) and
+    by the inline row panel of the "Combined slide" tab (see _build_row_config_fields).
+    Depends on: target.cmb_view/cmb_section/cmb_legend/cmb_contour_view/cmb_legend_orientation/cmb_scoping_display/
         cmb_deformation_scale_mode/txt_scale.
-    Retourne : rien (effet de bord sur row_config uniquement ; ne touche pas row_config.configured, ni les steps).
+    Returns: nothing (side effect on row_config only; does not touch row_config.configured, nor the steps).
     """
     selected_view = unicode(target.cmb_view.SelectedItem)
     row_config.view_name = None if selected_view == NO_VIEW_LABEL else selected_view
@@ -487,9 +487,9 @@ def _apply_row_config_fields(target, row_config):
     row_config.deformation_scale_mode = deformation_scale_mode_from_label(
         unicode(target.cmb_deformation_scale_mode.SelectedItem))
 
-    # La valeur du champ n'est lue/validee qu'en mode Manuel : en mode Auto Scale x1/x2, le
-    # multiplicateur applique est fixe (voir apply_scale_factor), ce champ est ignore - inutile
-    # d'avertir sur une valeur invalide qui ne sera de toute facon pas utilisee.
+    # The field's value is only read/validated in Manual mode: in Auto Scale x1/x2 mode, the
+    # applied multiplier is fixed (see apply_scale_factor), this field is ignored - no point
+    # warning about an invalid value that won't be used anyway.
     if row_config.deformation_scale_mode == "manual":
         try:
             scale_value = float(target.txt_scale.Text.strip().replace(",", "."))
@@ -504,9 +504,9 @@ def _apply_row_config_fields(target, row_config):
 
 def _build_steps_section_fields(target, root, row_config, step_count):
     """
-    Fait : construit la section "Loadcases" (steps + mode d'affichage individuel/combine) et l'ajoute a root.
-    Depend de : row_config.selected_steps/step_display_mode, _shared_resources.
-    Retourne : rien (pose sur target : step_checkboxes/radio_individual/radio_combined).
+    Does: builds the "Loadcases" section (steps + individual/combined display mode) and adds it to root.
+    Depends on: row_config.selected_steps/step_display_mode, _shared_resources.
+    Returns: nothing (sets on target: step_checkboxes/radio_individual/radio_combined).
     """
     group = Border()
     group.BorderBrush = _shared_resources["CardBorderBrush"]
@@ -592,9 +592,9 @@ def _build_steps_section_fields(target, root, row_config, step_count):
 
 def _apply_steps_section_fields(target, row_config):
     """
-    Fait : lit la selection de steps et le mode d'affichage depuis target et les applique a row_config.
-    Depend de : target.step_checkboxes/radio_combined, get_multi_step_template, MULTI_STEP_SLIDE_TEMPLATES.
-    Retourne : rien (effet de bord sur row_config.selected_steps/step_display_mode).
+    Does: reads the step selection and display mode from target and applies them to row_config.
+    Depends on: target.step_checkboxes/radio_combined, get_multi_step_template, MULTI_STEP_SLIDE_TEMPLATES.
+    Returns: nothing (side effect on row_config.selected_steps/step_display_mode).
     """
     checked_steps = [cb.Tag for cb in target.step_checkboxes if cb.IsChecked]
     row_config.selected_steps = checked_steps if checked_steps else None
@@ -616,13 +616,13 @@ def _apply_steps_section_fields(target, row_config):
         row_config.step_display_mode = "individual"
 
 
-# --- SECTION 5 - Champs partages : vue / coupe / opacite (geometrie par piece) ---
+# --- SECTION 5 - Shared fields: view / section / opacity (geometry per part) ---
 
 def _build_geometry_part_fields(target, root, row_config, views, section_plane_labels):
     """
-    Fait : construit les champs vue/coupe/opacite du contexte pour une piece isolee (geometrie) et les ajoute a root.
-    Depend de : _make_field_label.
-    Retourne : rien (pose sur target : cmb_view/cmb_section/slider_opacity/lbl_opacity_value).
+    Does: builds the view/section/context opacity fields for an isolated part (geometry) and adds them to root.
+    Depends on: _make_field_label.
+    Returns: nothing (sets on target: cmb_view/cmb_section/slider_opacity/lbl_opacity_value).
     """
     root.Children.Add(_make_field_label("View (View Manager):"))
     target.cmb_view = ComboBox()
@@ -677,9 +677,9 @@ def _build_geometry_part_fields(target, root, row_config, views, section_plane_l
 
 def _apply_geometry_part_fields(target, row_config):
     """
-    Fait : lit les champs vue/coupe/opacite depuis target et les applique a row_config.
-    Depend de : target.cmb_view/cmb_section/slider_opacity.
-    Retourne : rien (effet de bord sur row_config).
+    Does: reads the view/section/opacity fields from target and applies them to row_config.
+    Depends on: target.cmb_view/cmb_section/slider_opacity.
+    Returns: nothing (side effect on row_config).
     """
     selected_view = unicode(target.cmb_view.SelectedItem)
     row_config.view_name = None if selected_view == NO_VIEW_LABEL else selected_view
@@ -690,16 +690,16 @@ def _apply_geometry_part_fields(target, row_config):
     row_config.context_opacity_percent = int(target.slider_opacity.Value)
 
 
-# --- SECTION 5bis - Champs partages : vue (geometrie par piece isolee, mesh) ---
+# --- SECTION 5bis - Shared fields: view (isolated part geometry, mesh) ---
 
 def _build_mesh_part_fields(target, root, row_config, views):
     """
-    Fait : construit le champ vue (View Manager) uniquement et l'ajoute a root - pas de coupe ni
-    d'opacite (contrairement a _build_geometry_part_fields) : l'isolation se fait par masquage
-    complet des autres corps (show_only_body), une coupe/opacite de contexte n'aurait pas de sens
-    ici. Reutilise telle quelle pour Geometrie/Maillage/Contexte d'analyse (vue seule egalement).
-    Depend de : _make_field_label.
-    Retourne : rien (pose sur target : cmb_view).
+    Does: builds the view field (View Manager) only and adds it to root - no section or
+    opacity (unlike _build_geometry_part_fields): isolation is done by fully hiding
+    the other bodies (show_only_body), a context section/opacity would not make sense
+    here. Reused as-is for Geometry/Mesh/Analysis context (view only there too).
+    Depends on: _make_field_label.
+    Returns: nothing (sets on target: cmb_view).
     """
     root.Children.Add(_make_field_label("View (View Manager):"))
     target.cmb_view = ComboBox()
@@ -716,21 +716,21 @@ def _build_mesh_part_fields(target, root, row_config, views):
 
 def _apply_mesh_part_fields(target, row_config):
     """
-    Fait : lit le champ vue depuis target et l'applique a row_config.
-    Depend de : target.cmb_view.
-    Retourne : rien (effet de bord sur row_config).
+    Does: reads the view field from target and applies it to row_config.
+    Depends on: target.cmb_view.
+    Returns: nothing (side effect on row_config).
     """
     selected_view = unicode(target.cmb_view.SelectedItem)
     row_config.view_name = None if selected_view == NO_VIEW_LABEL else selected_view
 
 
-# --- SECTION 6 - Champs partages : titre / axes / couleur (Solution Information) ---
+# --- SECTION 6 - Shared fields: title / axes / color (Solution Information) ---
 
 def _build_solution_info_fields(target, root, row_config):
     """
-    Fait : construit les champs titre/axes/couleur de courbe pour un tracker Solution Information et les ajoute a root.
-    Depend de : _make_field_label, _themed_textbox, CURVE_COLOR_OPTIONS, curve_color_label.
-    Retourne : rien (pose sur target : txt_title/txt_x_label/txt_y_label/cmb_color).
+    Does: builds the title/axes/curve color fields for a Solution Information tracker and adds them to root.
+    Depends on: _make_field_label, _themed_textbox, CURVE_COLOR_OPTIONS, curve_color_label.
+    Returns: nothing (sets on target: txt_title/txt_x_label/txt_y_label/cmb_color).
     """
     root.Children.Add(_make_field_label("Chart title (empty = tracker name):"))
     target.txt_title = _themed_textbox()
@@ -761,9 +761,9 @@ def _build_solution_info_fields(target, root, row_config):
 
 def _apply_solution_info_fields(target, row_config):
     """
-    Fait : lit les champs titre/axes/couleur depuis target et les applique a row_config.
-    Depend de : target.txt_title/txt_x_label/txt_y_label/cmb_color, curve_color_from_label.
-    Retourne : rien (effet de bord sur row_config).
+    Does: reads the title/axes/color fields from target and applies them to row_config.
+    Depends on: target.txt_title/txt_x_label/txt_y_label/cmb_color, curve_color_from_label.
+    Returns: nothing (side effect on row_config).
     """
     row_config.chart_title = target.txt_title.Text.strip() or None
     row_config.x_axis_label = target.txt_x_label.Text.strip() or None
@@ -771,92 +771,92 @@ def _apply_solution_info_fields(target, row_config):
     row_config.curve_color = curve_color_from_label(unicode(target.cmb_color.SelectedItem))
 
 
-# --- SECTION 6bis - "Slide combinee (differents resultats)" : etat et constantes ---
-# Le flux "template puis grille puis case" vivait auparavant dans 3 boites de dialogue modales
-# (MultiResultTemplatePickerWindow / MultiResultGridWindow / ResultPickerWindow). Il est desormais
-# integre directement dans l'onglet "04   Slide combinee" de la fenetre principale (voir
-# ReportGeneratorApp._build_multi_result_tab et les methodes _multi_result_*/_on_multi_result_*) :
-# plus aucune fenetre separee, le choix du template, la grille et la configuration d'une case vivent
-# tous dans ce meme onglet (template en haut, grille a gauche, panneau de case a droite).
+# --- SECTION 6bis - "Combined slide (different results)": state and constants ---
+# The "template then grid then cell" flow used to live in 3 modal dialog boxes
+# (MultiResultTemplatePickerWindow / MultiResultGridWindow / ResultPickerWindow). It is now
+# integrated directly into the "04   Combined slide" tab of the main window (see
+# ReportGeneratorApp._build_multi_result_tab and the _multi_result_*/_on_multi_result_* methods):
+# no more separate window, the template choice, the grid, and a cell's configuration all live
+# in this same tab (template at the top, grid on the left, cell panel on the right).
 
 GRID_CELL_UNCONFIGURED_BRUSH = ROW_STATUS_NOT_SELECTED_BRUSH
 GRID_CELL_CONFIGURED_BRUSH = ROW_STATUS_CONFIGURED_BRUSH
 GRID_CELL_DISABLED_BRUSH = SolidColorBrush(WpfColor.FromRgb(0xD8, 0xD8, 0xD8))
 GRID_CELL_SELECTED_BORDER_BRUSH = SolidColorBrush(WpfColor.FromRgb(0x00, 0x8D, 0xD5))
 
-MULTI_RESULT_CELL_TOTAL = 8  # nombre d'emplacements de la grille (2 lignes x 4 colonnes, voir gridMultiResultCells)
+MULTI_RESULT_CELL_TOTAL = 8  # number of grid slots (2 rows x 4 columns, see gridMultiResultCells)
 
 
 class MultiResultSlideConfig(object):
     """
-    Une slide combinee "differents resultats" configuree depuis l'onglet "Slide combinee", en attente
-    de generation : elle n'est pas construite immediatement mais stockee dans
-    ReportGeneratorApp._multi_result_slides et apparait comme une carte a part entiere dans l'onglet
-    Apercu, generee seulement lors du clic sur "Generer le rapport" (meme session PowerPoint que tout
-    le reste, meme ordre glisser-depose).
+    A "different results" combined slide configured from the "Combined slide" tab, awaiting
+    generation: it is not built immediately but stored in
+    ReportGeneratorApp._multi_result_slides and appears as a full-fledged card in the
+    Preview tab, generated only when clicking "Generate report" (same PowerPoint session as
+    everything else, same drag-and-drop order).
     """
 
     def __init__(self, template_count, cell_configs):
         """
-        Fait : stocke le nombre d'emplacements et la configuration graphique de chaque case.
-        Depend de : rien (affectations simples).
-        Retourne : rien (constructeur).
+        Does: stores the number of slots and the graphics configuration of each cell.
+        Depends on: nothing (simple assignments).
+        Returns: nothing (constructor).
         """
         self.template_count = template_count
-        self.cell_configs = cell_configs  # liste de SlideRowConfig, une par case, dans l'ordre des emplacements
+        self.cell_configs = cell_configs  # list of SlideRowConfig, one per cell, in slot order
 
 
 class _ConfigFieldsHolder(object):
     """
-    Conteneur generique pour les controles d'un panneau de configuration cree en code (Border/
-    ComboBox/TextBox... sans fenetre dediee) : sert de `target` a _build_row_config_fields /
+    Generic container for the controls of a configuration panel built in code (Border/
+    ComboBox/TextBox... without a dedicated window): serves as the `target` for _build_row_config_fields /
     _build_steps_section_fields / _build_geometry_part_fields / _build_mesh_part_fields /
-    _build_solution_info_fields (et leurs _apply_* correspondants), aussi bien pour le panneau
-    lateral global ("..." de n'importe quelle ligne, voir ReportGeneratorApp._open_config_panel)
-    que pour le panneau de case de l'onglet "Slide combinee" (_show_multi_result_editor).
+    _build_solution_info_fields (and their corresponding _apply_*), both for the
+    global side panel ("..." on any row, see ReportGeneratorApp._open_config_panel)
+    and for the cell panel of the "Combined slide" tab (_show_multi_result_editor).
     """
     pass
 
 
-# --- SECTION 7 - Fenetre principale (chargee depuis AnsysReportGenerator_WPF.xaml) ---
+# --- SECTION 7 - Main window (loaded from AnsysReportGenerator_WPF.xaml) ---
 
 class ReportGeneratorApp(object):
     """
-    Point d'entree WPF de l'application : meme logique metier (fonctions de 04_slides.py /
-    05_interactive_slides.py), presentation chargee depuis AnsysReportGenerator_WPF.xaml et
-    organisee en 3 onglets :
+    WPF entry point of the application: same business logic (functions from 04_slides.py /
+    05_interactive_slides.py), presentation loaded from AnsysReportGenerator_WPF.xaml and
+    organized into 3 tabs:
 
-    - "Slides generales" : Geometrie / Maillage (cases a cocher simples) +
-      "Pieces a isoler (geometrie)", "Piece a isoler mesh" et "Contexte
-      d'analyse" (une slide "Analysis Parameters" par analyse cochee - voir
-      collect_analyses de 05_interactive_slides.py) (grilles de selection).
-    - "Conditions et contacts" : Boundary Conditions, Bolt Pretension,
-      Contacts a afficher, Connexion : Contact Tool (Contact Tool sans step,
-      branche Connections), Solution Information.
-    - "Categories de resultats" : Contact Tool Results (Contact Tool avec
-      steps, branche Solution), Resultats, Bolt Tool - une slide par ligne
-      cochee.
+    - "General slides": Geometry / Mesh (simple checkboxes) +
+      "Parts to isolate (geometry)", "Part to isolate mesh" and "Analysis
+      context" (one "Analysis Parameters" slide per checked analysis - see
+      collect_analyses in 05_interactive_slides.py) (selection grids).
+    - "Conditions and contacts": Boundary Conditions, Bolt Pretension,
+      Contacts to display, Connection: Contact Tool (Contact Tool without step,
+      Connections branch), Solution Information.
+    - "Result categories": Contact Tool Results (Contact Tool with
+      steps, Solution branch), Results, Bolt Tool - one slide per checked
+      row.
 
-    Un 4eme onglet "Apercu du rapport" affiche une carte par slide selectionnee
-    (nom + parametres detailles), reorganisable par glisser-deposer : l'ordre
-    choisi est respecte a la generation (voir self._preview_order).
+    A 4th tab "Report preview" displays one card per selected slide
+    (name + detailed parameters), reorderable via drag-and-drop: the chosen
+    order is respected at generation time (see self._preview_order).
     """
 
     def __init__(self, xaml_path):
         """
-        Fait : initialise l'application (collecte des donnees Mechanical, chargement du XAML, cablage des controles).
-        Depend de : collect_* (05_interactive_slides.py), ExtAPI.DataModel, self._load_window/_find_controls/_build_sections/_wire_*.
-        Retourne : rien (construit self.window pret a etre affiche par SECTION 8).
+        Does: initializes the application (collecting Mechanical data, loading the XAML, wiring the controls).
+        Depends on: collect_* (05_interactive_slides.py), ExtAPI.DataModel, self._load_window/_find_controls/_build_sections/_wire_*.
+        Returns: nothing (builds self.window ready to be shown by SECTION 8).
         """
         remove_stale_figures()
 
         self._analysis = ExtAPI.DataModel.Project.Model.Analyses[0]
 
-        # Resultats / Contact Tool Results / Bolt Tool / Bolt Pretension / Solution Information
-        # sont compiles depuis TOUTES les analyses du projet des qu'il y en a plus d'une, et
-        # taguees avec leur analyse d'origine (tuples (obj, analysis)) pour differencier les noms
-        # identiques venant de deux analyses differentes (voir analysis_suffix). Sur un projet
-        # mono-analyse, comportement identique a avant (listes taguees (obj, None), jamais suffixees).
+        # Results / Contact Tool Results / Bolt Tool / Bolt Pretension / Solution Information
+        # are compiled from ALL analyses in the project as soon as there is more than one, and
+        # tagged with their originating analysis (tuples (obj, analysis)) to differentiate
+        # identical names coming from two different analyses (see analysis_suffix). On a
+        # single-analysis project, behavior identical to before (lists tagged (obj, None), never suffixed).
         self._analyses = collect_analyses()
         self._multi_analysis = len(self._analyses) > 1
         print "Analyses found: {}".format(len(self._analyses))
@@ -890,45 +890,45 @@ class ReportGeneratorApp(object):
         self._step_count = get_step_count(self._analysis)
         self._legend_names = collect_legend_files()
 
-        # Vue (View Manager) choisie pour les slides Geometrie/Maillage (cases a cocher simples,
-        # pas de liste) : reutilise MeshPartRowConfig (vue uniquement, deja utilise pour le mesh
-        # par piece isolee) plutot que d'introduire une classe dediee, ses attributs (obj/view_name/
-        # configured) suffisant tels quels.
+        # View (View Manager) chosen for the Geometry/Mesh slides (simple checkboxes,
+        # no list): reuses MeshPartRowConfig (view only, already used for isolated-part
+        # mesh) rather than introducing a dedicated class, its attributes (obj/view_name/
+        # configured) being sufficient as-is.
         self._geometry_view_config = MeshPartRowConfig(ExtAPI.DataModel.Project.Model.Geometry)
         self._mesh_view_config = MeshPartRowConfig(ExtAPI.DataModel.Project.Model.Mesh)
 
-        # Choix du tableau de maillage (par defaut / complet) pour la slide Maillage : deplace du
-        # ComboBox autrefois dans la carte "Slide maillage" (onglet 01) vers le panneau "PARAMETRES"
-        # de cette meme case (voir _open_config_panel, kind="mesh_part" + row_config is self._mesh_view_config).
-        self._mesh_table_full = False  # False = tableau par defaut, True = tableau complet
+        # Choice of mesh table (default / full) for the Mesh slide: moved from the
+        # ComboBox formerly in the "Mesh slide" card (tab 01) to the "PARAMETERS" panel
+        # of that same row (see _open_config_panel, kind="mesh_part" + row_config is self._mesh_view_config).
+        self._mesh_table_full = False  # False = default table, True = full table
 
-        self._sections = {}       # nom de section -> {rows, group_key, label, search_box}
-        self._section_order = []  # ordre d'affichage stable pour l'apercu
-        self._multi_result_slides = []  # liste de MultiResultSlideConfig, une par slide "differents resultats" ajoutee au rapport (voir onglet "Slide combinee", _on_multi_result_add_to_report)
+        self._sections = {}       # section name -> {rows, group_key, label, search_box}
+        self._section_order = []  # stable display order for the preview
+        self._multi_result_slides = []  # list of MultiResultSlideConfig, one per "different results" slide added to the report (see "Combined slide" tab, _on_multi_result_add_to_report)
 
-        # --- Etat du panneau lateral global de configuration ("...", voir _open_config_panel) ---
+        # --- State of the global configuration side panel ("...", see _open_config_panel) ---
         self._config_panel_kind = None         # "result"/"geometry_part"/"mesh_part"/"solution_info"/None
-        self._config_panel_row_config = None   # row_config en cours d'edition dans le panneau
-        self._config_panel_fields = None       # _ConfigFieldsHolder courant (cmb_view/cmb_section/...)
-        self._config_panel_refresh = None      # callable() invoque apres "Appliquer" (rafraichit la ligne/l'apercu)
-        self._config_panel_bulk_rows = None    # list de SectionRow si panneau ouvert en mode groupe (bulk), None sinon
+        self._config_panel_row_config = None   # row_config currently being edited in the panel
+        self._config_panel_fields = None       # current _ConfigFieldsHolder (cmb_view/cmb_section/...)
+        self._config_panel_refresh = None      # callable() invoked after "Apply" (refreshes the row/preview)
+        self._config_panel_bulk_rows = None    # list of SectionRow if panel opened in bulk mode, None otherwise
 
-        # --- Etat de l'onglet "Slide combinee" (grille en cours de construction, voir _build_multi_result_tab) ---
-        self._mr_template_count = None    # nombre de cases actives du template choisi (2/3/4/6/8)
-        self._mr_cell_configs = [None] * MULTI_RESULT_CELL_TOTAL  # index -> SlideRowConfig ou None
-        self._mr_cell_borders = []        # Border de chaque case de gridMultiResultCells, dans l'ordre
-        self._mr_cell_labels = []         # TextBlock de chaque case, dans l'ordre
-        self._mr_template_buttons = {}    # nombre de resultats -> Button (pour l'etat visuel "selectionne")
-        self._mr_selected_cell_index = None  # case actuellement affichee dans panelMultiResultSidePanel (None = aucune)
-        self._mr_editing = None           # (index, cfg) en cours d'edition dans le panneau de droite (etat "editeur")
-        self._mr_editor_fields = None     # _ConfigFieldsHolder courant (cmb_view/cmb_section/... de l'editeur affiche)
-        self._mr_picker_rows = []         # [(Border, TextBlock, resultat)] de la liste "choisir un resultat" affichee
+        # --- State of the "Combined slide" tab (grid under construction, see _build_multi_result_tab) ---
+        self._mr_template_count = None    # number of active cells in the chosen template (2/3/4/6/8)
+        self._mr_cell_configs = [None] * MULTI_RESULT_CELL_TOTAL  # index -> SlideRowConfig or None
+        self._mr_cell_borders = []        # Border of each cell of gridMultiResultCells, in order
+        self._mr_cell_labels = []         # TextBlock of each cell, in order
+        self._mr_template_buttons = {}    # result count -> Button (for the "selected" visual state)
+        self._mr_selected_cell_index = None  # cell currently shown in panelMultiResultSidePanel (None = none)
+        self._mr_editing = None           # (index, cfg) currently being edited in the right-hand panel ("editor" state)
+        self._mr_editor_fields = None     # current _ConfigFieldsHolder (cmb_view/cmb_section/... of the displayed editor)
+        self._mr_picker_rows = []         # [(Border, TextBlock, result)] of the displayed "choose a result" list
 
-        self._preview_order = []  # liste ordonnee de tuples (kind, payload), reorganisable par glisser-deposer
-        self._entry_to_card = {}  # (kind, payload) -> Border actuellement affiche dans panelPreview
-        self._entry_to_badge = {}  # (kind, payload) -> TextBlock du badge numerote de la carte
+        self._preview_order = []  # ordered list of (kind, payload) tuples, reorderable via drag-and-drop
+        self._entry_to_card = {}  # (kind, payload) -> Border currently displayed in panelPreview
+        self._entry_to_badge = {}  # (kind, payload) -> TextBlock of the card's numbered badge
 
-        # Etat du glisser-deposer en cours (voir _begin_potential_drag / _start_drag / _end_drag).
+        # State of the ongoing drag-and-drop (see _begin_potential_drag / _start_drag / _end_drag).
         self._drag_pending_card = None
         self._drag_pending_entry = None
         self._drag_start_point = None
@@ -937,14 +937,14 @@ class ReportGeneratorApp(object):
         self._drag_source_card = None
         self._drag_popup = None
 
-        self._last_report_path = None  # chemin du dernier rapport PPTX genere (onglet Fichiers)
+        self._last_report_path = None  # path of the last generated PPTX report (Files tab)
 
         self.window = self._load_window(xaml_path)
 
-        # Rend les ressources (brushes + styles) de la fenetre principale accessibles aux panneaux
-        # de configuration "..." construits en code (voir _shared_resources, section 2) : une seule
-        # instance de ReportGeneratorApp par execution (SECTION 8), donc cette assignation unique
-        # suffit pour toute la duree du script.
+        # Makes the main window's resources (brushes + styles) accessible to the "..."
+        # configuration panels built in code (see _shared_resources, section 2): a single
+        # ReportGeneratorApp instance per run (SECTION 8), so this one-time assignment
+        # is sufficient for the whole duration of the script.
         global _shared_resources
         _shared_resources = self.window.Resources
 
@@ -960,13 +960,13 @@ class ReportGeneratorApp(object):
         self._wire_events()
         self._update_preview()
 
-    # --- Chargement du XAML ---
+    # --- Loading the XAML ---
 
     def _load_window(self, xaml_path):
         """
-        Fait : charge AnsysReportGenerator_WPF.xaml et construit la Window WPF correspondante.
-        Depend de : StreamReader, XmlReader, XamlReader.Load (System.Windows.Markup).
-        Retourne : Window, la fenetre chargee (pas encore affichee).
+        Does: loads AnsysReportGenerator_WPF.xaml and builds the corresponding WPF Window.
+        Depends on: StreamReader, XmlReader, XamlReader.Load (System.Windows.Markup).
+        Returns: Window, the loaded window (not yet shown).
         """
         reader = StreamReader(xaml_path)
         xml_reader = XmlReader.Create(reader)
@@ -974,9 +974,9 @@ class ReportGeneratorApp(object):
 
     def _find_controls(self):
         """
-        Fait : recupere les references des controles nommes (x:Name) definis dans le XAML.
-        Depend de : self.window.FindName, les x:Name declares dans AnsysReportGenerator_WPF.xaml.
-        Retourne : rien (initialise les attributs self.btn_.../chk_.../panel_... etc.).
+        Does: retrieves the references to the named controls (x:Name) defined in the XAML.
+        Depends on: self.window.FindName, the x:Name declared in AnsysReportGenerator_WPF.xaml.
+        Returns: nothing (initializes the self.btn_.../chk_.../panel_... attributes etc.).
         """
         w = self.window
         self._load_logo()
@@ -1030,22 +1030,22 @@ class ReportGeneratorApp(object):
 
     def _load_logo(self):
         """
-        Fait : charge le logo entreprise (LOGO_PATH) dans la ressource "SidebarLogoBitmap" utilisee
-        par la carte credit en bas de la colonne d'onglets (voir le ControlTemplate de TabControl
-        dans le XAML, Image avec Source="{DynamicResource SidebarLogoBitmap}") - DynamicResource
-        (pas x:Name/FindName) car cette Image vit dans le NameScope prive du ControlTemplate,
-        inaccessible depuis self.window.FindName().
-        Depend de : self.window.Resources, LOGO_PATH (00_constants.py), BitmapImage/BitmapCacheOption/Uri.
-        Retourne : rien (effet de bord sur self.window.Resources["SidebarLogoBitmap"] ; ne fait rien si LOGO_PATH est absent).
+        Does: loads the company logo (LOGO_PATH) into the "SidebarLogoBitmap" resource used
+        by the credit card at the bottom of the tab column (see the TabControl ControlTemplate
+        in the XAML, Image with Source="{DynamicResource SidebarLogoBitmap}") - DynamicResource
+        (not x:Name/FindName) because this Image lives in the ControlTemplate's private NameScope,
+        inaccessible from self.window.FindName().
+        Depends on: self.window.Resources, LOGO_PATH (00_constants.py), BitmapImage/BitmapCacheOption/Uri.
+        Returns: nothing (side effect on self.window.Resources["SidebarLogoBitmap"]; does nothing if LOGO_PATH is missing).
         """
         if not os.path.isfile(LOGO_PATH):
             return
         try:
             bitmap = BitmapImage()
             bitmap.BeginInit()
-            # CacheOption.OnLoad : charge le fichier entierement en memoire puis libere le handle
-            # immediatement (sinon le PNG reste ouvert/verrouille par le processus Mechanical pour
-            # toute la duree de la session).
+            # CacheOption.OnLoad: loads the file entirely into memory then releases the handle
+            # immediately (otherwise the PNG stays open/locked by the Mechanical process for
+            # the whole session).
             bitmap.CacheOption = BitmapCacheOption.OnLoad
             bitmap.UriSource = Uri(LOGO_PATH, UriKind.Absolute)
             bitmap.EndInit()
@@ -1055,18 +1055,18 @@ class ReportGeneratorApp(object):
 
     def _refresh_general_slide_status(self):
         """
-        Fait : rafraichit le texte de statut des cartes "Slide geometrie"/"Slide maillage" (onglet 01).
-        Depend de : self.lbl_geometry_status/lbl_mesh_status, self._geometry_view_config/_mesh_view_config, _general_slide_status_text.
-        Retourne : rien (effet de bord sur lblGeometryStatus/lblMeshStatus).
+        Does: refreshes the status text of the "Geometry slide"/"Mesh slide" cards (tab 01).
+        Depends on: self.lbl_geometry_status/lbl_mesh_status, self._geometry_view_config/_mesh_view_config, _general_slide_status_text.
+        Returns: nothing (side effect on lblGeometryStatus/lblMeshStatus).
         """
         self.lbl_geometry_status.Text = _general_slide_status_text(self._geometry_view_config)
         self.lbl_mesh_status.Text = _general_slide_status_text(self._mesh_view_config)
 
     def _wire_contacts_filter(self):
         """
-        Fait : peuple et cable le ComboBox de filtre par type de contact (section "Contacts a afficher").
-        Depend de : self.cmb_contacts_filter, CONTACTS_FILTER_OPTIONS, self._on_contacts_filter_changed.
-        Retourne : rien (effet de bord sur self.cmb_contacts_filter).
+        Does: populates and wires the contact-type filter ComboBox (section "Contacts to display").
+        Depends on: self.cmb_contacts_filter, CONTACTS_FILTER_OPTIONS, self._on_contacts_filter_changed.
+        Returns: nothing (side effect on self.cmb_contacts_filter).
         """
         for label in CONTACTS_FILTER_OPTIONS:
             self.cmb_contacts_filter.Items.Add(label)
@@ -1075,12 +1075,12 @@ class ReportGeneratorApp(object):
 
     def _on_contacts_filter_changed(self, sender, e):
         """
-        Fait : reordonne VISUELLEMENT panelContacts pour faire remonter en haut les contacts du type
-        choisi (Frictional/Bonded/Autres), ou restaure l'ordre d'origine ("Tous"). Meme principe que
-        _perform_search (voir plus bas) : seul l'ordre d'AFFICHAGE change, self._sections["Contacts"]["rows"]
-        garde son ordre d'origine, qui reste celui utilise pour la generation du rapport.
-        Depend de : self._sections["Contacts"]["rows"/"panel"], _classify_contact_name, CONTACTS_FILTER_OPTIONS.
-        Retourne : rien (effet de bord sur l'ordre visuel de panelContacts).
+        Does: VISUALLY reorders panelContacts to bring contacts of the chosen type
+        (Frictional/Bonded/Autres) to the top, or restores the original order ("Tous"). Same principle as
+        _perform_search (see further below): only the DISPLAY order changes, self._sections["Contacts"]["rows"]
+        keeps its original order, which remains the one used for report generation.
+        Depends on: self._sections["Contacts"]["rows"/"panel"], _classify_contact_name, CONTACTS_FILTER_OPTIONS.
+        Returns: nothing (side effect on the visual order of panelContacts).
         """
         selected = unicode(self.cmb_contacts_filter.SelectedItem) if self.cmb_contacts_filter.SelectedItem else "Tous"
         section = self._sections["Contacts"]
@@ -1098,16 +1098,16 @@ class ReportGeneratorApp(object):
         for row in ordered_rows:
             panel.Children.Add(row.border)
 
-    # --- Onglet "Fichiers" : chemins modifiables ---
-    # Voir FILE_PATH_SETTINGS / _DEFAULT_FILE_PATHS (SECTION 1) : chaque ligne modifie
-    # directement le global correspondant de 00_constants.py, lu par tout Report
-    # Generator/*.py au moment de l'appel - aucun autre changement necessaire ailleurs.
+    # --- "Files" tab: editable paths ---
+    # See FILE_PATH_SETTINGS / _DEFAULT_FILE_PATHS (SECTION 1): each row directly modifies
+    # the corresponding global in 00_constants.py, read by all Report
+    # Generator/*.py at call time - no other change needed elsewhere.
 
     def _wire_file_paths(self):
         """
-        Fait : initialise les 5 TextBox de chemins avec leur valeur courante et cable boutons "..."/reset.
-        Depend de : FILE_PATH_SETTINGS, self._make_path_edit_handler/_make_path_browse_handler/_on_reset_file_paths.
-        Retourne : rien (effet de bord sur les controles de l'onglet Fichiers).
+        Does: initializes the 5 path TextBoxes with their current value and wires the "..."/reset buttons.
+        Depends on: FILE_PATH_SETTINGS, self._make_path_edit_handler/_make_path_browse_handler/_on_reset_file_paths.
+        Returns: nothing (side effect on the Files tab controls).
         """
         self._path_textboxes = {}
         for name, textbox_id, browse_id, kind in FILE_PATH_SETTINGS:
@@ -1122,39 +1122,39 @@ class ReportGeneratorApp(object):
 
     def _make_path_edit_handler(self, name, kind):
         """
-        Fait : ferme name/kind par valeur pour produire le handler LostFocus d'une TextBox de chemin.
-        Depend de : self._apply_file_path_edit.
-        Retourne : function, le handler(sender, e) a cabler sur textbox.LostFocus.
+        Does: closes over name/kind by value to produce the LostFocus handler of a path TextBox.
+        Depends on: self._apply_file_path_edit.
+        Returns: function, the handler(sender, e) to wire on textbox.LostFocus.
         """
         def handler(sender, e):
             """
-            Fait : valide le chemin tape des que la TextBox perd le focus.
-            Depend de : self._apply_file_path_edit, name/kind captures par la fermeture.
-            Retourne : rien (effet de bord sur le global correspondant).
+            Does: validates the typed path as soon as the TextBox loses focus.
+            Depends on: self._apply_file_path_edit, name/kind captured by the closure.
+            Returns: nothing (side effect on the corresponding global).
             """
             self._apply_file_path_edit(name, kind)
         return handler
 
     def _make_path_browse_handler(self, name, kind):
         """
-        Fait : ferme name/kind par valeur pour produire le handler Click du bouton "..." d'une ligne de chemin.
-        Depend de : self._browse_file_path.
-        Retourne : function, le handler(sender, e) a cabler sur browse_button.Click.
+        Does: closes over name/kind by value to produce the Click handler of the "..." button of a path row.
+        Depends on: self._browse_file_path.
+        Returns: function, the handler(sender, e) to wire on browse_button.Click.
         """
         def handler(sender, e):
             """
-            Fait : ouvre le dialogue de parcours pour choisir un chemin personnalise.
-            Depend de : self._browse_file_path, name/kind captures par la fermeture.
-            Retourne : rien (effet de bord sur le global correspondant).
+            Does: opens the browse dialog to choose a custom path.
+            Depends on: self._browse_file_path, name/kind captured by the closure.
+            Returns: nothing (side effect on the corresponding global).
             """
             self._browse_file_path(name, kind)
         return handler
 
     def _apply_file_path_edit(self, name, kind):
         """
-        Fait : valide le texte tape dans la TextBox du chemin 'name' et reaffecte le global correspondant si valide.
-        Depend de : self._path_textboxes, os.path, ensure_folder_exists, globals().
-        Retourne : rien (effet de bord : met a jour globals()[name] ou restaure le texte precedent).
+        Does: validates the text typed in the 'name' path TextBox and reassigns the corresponding global if valid.
+        Depends on: self._path_textboxes, os.path, ensure_folder_exists, globals().
+        Returns: nothing (side effect: updates globals()[name] or restores the previous text).
         """
         textbox = self._path_textboxes[name]
         new_value = textbox.Text.strip()
@@ -1184,9 +1184,9 @@ class ReportGeneratorApp(object):
 
     def _browse_file_path(self, name, kind):
         """
-        Fait : ouvre un OpenFileDialog (template) ou FolderBrowserDialog (dossiers) pour choisir un chemin.
-        Depend de : self._path_textboxes, System.Windows.Forms (SWF.OpenFileDialog/FolderBrowserDialog), self._apply_file_path_edit.
-        Retourne : rien (effet de bord sur la TextBox et le global correspondant si un chemin est choisi).
+        Does: opens an OpenFileDialog (template) or FolderBrowserDialog (folders) to choose a path.
+        Depends on: self._path_textboxes, System.Windows.Forms (SWF.OpenFileDialog/FolderBrowserDialog), self._apply_file_path_edit.
+        Returns: nothing (side effect on the TextBox and the corresponding global if a path is chosen).
         """
         textbox = self._path_textboxes[name]
         current_value = globals()[name]
@@ -1208,9 +1208,9 @@ class ReportGeneratorApp(object):
 
     def _on_reset_file_paths(self, sender, e):
         """
-        Fait : bouton "Reinitialiser les chemins" - revient aux valeurs d'origine de 00_constants.py.
-        Depend de : FILE_PATH_SETTINGS, _DEFAULT_FILE_PATHS, self._refresh_csv_files.
-        Retourne : rien (effet de bord : reaffecte globals() et les TextBox de chemins).
+        Does: "Reset paths" button - reverts to the original values from 00_constants.py.
+        Depends on: FILE_PATH_SETTINGS, _DEFAULT_FILE_PATHS, self._refresh_csv_files.
+        Returns: nothing (side effect: reassigns globals() and the path TextBoxes).
         """
         for name, textbox_id, browse_id, kind in FILE_PATH_SETTINGS:
             default_value = _DEFAULT_FILE_PATHS[name]
@@ -1219,13 +1219,13 @@ class ReportGeneratorApp(object):
         self._refresh_csv_files()
         print "File paths reset to their original values."
 
-    # --- Onglet "Fichiers" : liste des CSV disponibles ---
+    # --- "Files" tab: list of available CSV files ---
 
     def _refresh_csv_files(self):
         """
-        Fait : reconstruit panelCsvFiles (liste, pas des tuiles) a partir du contenu courant de CSV_EXPORT_FOLDER.
-        Depend de : CSV_EXPORT_FOLDER, os.listdir, self._build_csv_row.
-        Retourne : rien (effet de bord sur self.panel_csv_files).
+        Does: rebuilds panelCsvFiles (a list, not tiles) from the current contents of CSV_EXPORT_FOLDER.
+        Depends on: CSV_EXPORT_FOLDER, os.listdir, self._build_csv_row.
+        Returns: nothing (side effect on self.panel_csv_files).
         """
         self.panel_csv_files.Children.Clear()
         try:
@@ -1246,9 +1246,9 @@ class ReportGeneratorApp(object):
 
     def _build_csv_row(self, name, path):
         """
-        Fait : construit une ligne de la liste des CSV (nom a gauche, boutons Ouvrir/Afficher dans le dossier a droite).
-        Depend de : self._make_view_handler/_make_show_in_folder_handler, _shared_resources.
-        Retourne : Border, la ligne prete a etre ajoutee a panelCsvFiles (bordure basse = separateur de tableau).
+        Does: builds a row of the CSV list (name on the left, Open/Show in folder buttons on the right).
+        Depends on: self._make_view_handler/_make_show_in_folder_handler, _shared_resources.
+        Returns: Border, the row ready to be added to panelCsvFiles (bottom border = table separator).
         """
         grid = Grid()
         col_name = ColumnDefinition()
@@ -1297,39 +1297,39 @@ class ReportGeneratorApp(object):
 
     def _make_view_handler(self, path):
         """
-        Fait : ferme path par valeur pour produire le handler Click du bouton "Ouvrir" d'une ligne CSV.
-        Depend de : self._on_view_file.
-        Retourne : function, le handler(sender, e) a cabler sur btn_open.Click.
+        Does: closes over path by value to produce the Click handler of the "Open" button of a CSV row.
+        Depends on: self._on_view_file.
+        Returns: function, the handler(sender, e) to wire on btn_open.Click.
         """
         def handler(sender, e):
             """
-            Fait : ouvre le fichier CSV avec son application associee.
-            Depend de : self._on_view_file, path capture par la fermeture.
-            Retourne : rien (effet de bord : lance l'application associee).
+            Does: opens the CSV file with its associated application.
+            Depends on: self._on_view_file, path captured by the closure.
+            Returns: nothing (side effect: launches the associated application).
             """
             self._on_view_file(path)
         return handler
 
     def _make_show_in_folder_handler(self, path):
         """
-        Fait : ferme path par valeur pour produire le handler Click du bouton "Afficher dans le dossier".
-        Depend de : self._on_show_in_folder.
-        Retourne : function, le handler(sender, e) a cabler sur btn_show.Click.
+        Does: closes over path by value to produce the Click handler of the "Show in folder" button.
+        Depends on: self._on_show_in_folder.
+        Returns: function, the handler(sender, e) to wire on btn_show.Click.
         """
         def handler(sender, e):
             """
-            Fait : ouvre l'explorateur Windows avec le fichier surligne.
-            Depend de : self._on_show_in_folder, path capture par la fermeture.
-            Retourne : rien (effet de bord : lance explorer.exe).
+            Does: opens Windows Explorer with the file highlighted.
+            Depends on: self._on_show_in_folder, path captured by the closure.
+            Returns: nothing (side effect: launches explorer.exe).
             """
             self._on_show_in_folder(path)
         return handler
 
     def _on_view_file(self, path):
         """
-        Fait : ouvre un fichier avec son application associee (equivalent d'un double-clic dans l'explorateur).
-        Depend de : System.Diagnostics.Process.Start.
-        Retourne : rien (effet de bord : lance l'application associee, affiche une MessageBox si echec).
+        Does: opens a file with its associated application (equivalent of a double-click in Explorer).
+        Depends on: System.Diagnostics.Process.Start.
+        Returns: nothing (side effect: launches the associated application, shows a MessageBox on failure).
         """
         try:
             Process.Start(path)
@@ -1339,9 +1339,9 @@ class ReportGeneratorApp(object):
 
     def _on_show_in_folder(self, path):
         """
-        Fait : ouvre l'explorateur Windows avec le fichier deja selectionne/surligne ("Afficher dans le dossier").
-        Depend de : System.Diagnostics.Process.Start("explorer.exe", "/select,...") (API .NET).
-        Retourne : rien (effet de bord : lance explorer.exe, affiche une MessageBox si echec).
+        Does: opens Windows Explorer with the file already selected/highlighted ("Show in folder").
+        Depends on: System.Diagnostics.Process.Start("explorer.exe", "/select,...") (.NET API).
+        Returns: nothing (side effect: launches explorer.exe, shows a MessageBox on failure).
         """
         try:
             Process.Start("explorer.exe", '/select,"{}"'.format(path))
@@ -1349,18 +1349,18 @@ class ReportGeneratorApp(object):
             MessageBox.Show("Unable to show the file in its folder:\n" + str(ex),
                              "Error", MessageBoxButton.OK, MessageBoxImage.Error)
 
-    # --- Onglet "Fichiers" : nettoyage des dossiers de donnees ---
-    # Une tuile par sous-dossier de DATA_ROOT (hors legendes, voir list_data_cleanup_folders dans
-    # 00_constants.py) : taille + nombre de fichiers, bouton "Vider" individuel (rouge clair), et un
-    # bouton global "Tout supprimer" (rouge voyant, btnDeleteAllData) qui vide tous ces dossiers d'un
-    # coup. Les legendes ne sont jamais concernees : ce sont des fichiers de configuration reutilises
-    # d'une generation a l'autre, pas des exports jetables.
+    # --- "Files" tab: cleaning up data folders ---
+    # One tile per DATA_ROOT subfolder (excluding legends, see list_data_cleanup_folders in
+    # 00_constants.py): size + file count, individual "Clear" button (light red), and a
+    # global "Delete all" button (bright red, btnDeleteAllData) that empties all these folders at
+    # once. Legends are never affected: they are configuration files reused
+    # from one generation to the next, not disposable exports.
 
     def _refresh_data_cleanup_tiles(self):
         """
-        Fait : reconstruit panelDataCleanup a partir du contenu courant de DATA_ROOT (hors legendes).
-        Depend de : list_data_cleanup_folders (00_constants.py), self._build_data_cleanup_tile.
-        Retourne : rien (effet de bord sur self.panel_data_cleanup).
+        Does: rebuilds panelDataCleanup from the current contents of DATA_ROOT (excluding legends).
+        Depends on: list_data_cleanup_folders (00_constants.py), self._build_data_cleanup_tile.
+        Returns: nothing (side effect on self.panel_data_cleanup).
         """
         self.panel_data_cleanup.Children.Clear()
         folders = list_data_cleanup_folders()
@@ -1378,9 +1378,9 @@ class ReportGeneratorApp(object):
 
     def _build_data_cleanup_tile(self, name, path):
         """
-        Fait : construit une tuile de nettoyage (nom du dossier, taille, nombre de fichiers, bouton "Vider").
-        Depend de : get_folder_stats/format_folder_size (00_constants.py), self._make_clear_folder_handler, _shared_resources, CARD_NORMAL_BACKGROUND.
-        Retourne : Border, la tuile prete a etre ajoutee a panelDataCleanup (etirable, panelDataCleanup est un UniformGrid 2x2).
+        Does: builds a cleanup tile (folder name, size, file count, "Clear" button).
+        Depends on: get_folder_stats/format_folder_size (00_constants.py), self._make_clear_folder_handler, _shared_resources, CARD_NORMAL_BACKGROUND.
+        Returns: Border, the tile ready to be added to panelDataCleanup (stretchable, panelDataCleanup is a 2x2 UniformGrid).
         """
         size_bytes, file_count = get_folder_stats(path)
 
@@ -1408,8 +1408,8 @@ class ReportGeneratorApp(object):
         btn_clear.Click += self._make_clear_folder_handler(name, path)
         content.Children.Add(btn_clear)
 
-        # Pas de Width fixe (contrairement aux autres tuiles de l'app) : panelDataCleanup est un
-        # UniformGrid 2x2 (voir XAML), chaque case doit s'etirer pour occuper l'espace alloue.
+        # No fixed Width (unlike the app's other tiles): panelDataCleanup is a
+        # 2x2 UniformGrid (see XAML), each cell must stretch to fill its allotted space.
         tile = Border()
         tile.Background = CARD_NORMAL_BACKGROUND
         tile.BorderBrush = _shared_resources["CardBorderBrush"]
@@ -1423,9 +1423,9 @@ class ReportGeneratorApp(object):
 
     def _make_clear_folder_handler(self, name, path):
         """
-        Fait : ferme name/path par valeur pour produire le handler Click du bouton "Vider" d'une tuile de nettoyage.
-        Depend de : self._on_clear_folder.
-        Retourne : function, le handler(sender, e) a cabler sur btn_clear.Click.
+        Does: closes over name/path by value to produce the Click handler of a cleanup tile's "Clear" button.
+        Depends on: self._on_clear_folder.
+        Returns: function, the handler(sender, e) to wire on btn_clear.Click.
         """
         def handler(sender, e):
             self._on_clear_folder(name, path)
@@ -1433,9 +1433,9 @@ class ReportGeneratorApp(object):
 
     def _on_clear_folder(self, name, path):
         """
-        Fait : demande confirmation puis vide un dossier de donnees (bouton "Vider" d'une tuile).
-        Depend de : clear_folder_contents (00_constants.py), REPORT_OUTPUT_FOLDER, self._reset_report_status_tile, self._refresh_csv_files/_refresh_data_cleanup_tiles, MessageBox.
-        Retourne : rien (effet de bord sur le systeme de fichiers et l'UI, si confirme).
+        Does: asks for confirmation then clears a data folder (a tile's "Clear" button).
+        Depends on: clear_folder_contents (00_constants.py), REPORT_OUTPUT_FOLDER, self._reset_report_status_tile, self._refresh_csv_files/_refresh_data_cleanup_tiles, MessageBox.
+        Returns: nothing (side effect on the file system and the UI, if confirmed).
         """
         answer = MessageBox.Show(
             "Delete all contents of \"{}\"? This action cannot be undone.".format(name),
@@ -1446,8 +1446,8 @@ class ReportGeneratorApp(object):
         clear_folder_contents(path)
         print "Folder cleared: " + path
 
-        # Le dernier rapport genere n'existe peut-etre plus si c'est justement ce dossier qui vient
-        # d'etre vide : la tuile "resultat de rapport" (Ouvrir/Afficher dans le dossier) doit repasser a l'etat neutre.
+        # The last generated report may no longer exist if this is precisely the folder that was
+        # just cleared: the "report result" tile (Open/Show in folder) must revert to the neutral state.
         if os.path.normcase(os.path.normpath(path)) == os.path.normcase(os.path.normpath(REPORT_OUTPUT_FOLDER)):
             self._reset_report_status_tile()
 
@@ -1456,9 +1456,9 @@ class ReportGeneratorApp(object):
 
     def _reset_report_status_tile(self):
         """
-        Fait : remet la tuile "resultat de rapport" a l'etat neutre (ex : apres suppression du dossier des rapports).
-        Depend de : _shared_resources, self.border_report_tile/lbl_report_name/btn_report_view/btn_report_show_in_folder.
-        Retourne : rien (effet de bord sur self._last_report_path et les controles de la tuile de rapport).
+        Does: resets the "report result" tile to the neutral state (e.g. after deleting the reports folder).
+        Depends on: _shared_resources, self.border_report_tile/lbl_report_name/btn_report_view/btn_report_show_in_folder.
+        Returns: nothing (side effect on self._last_report_path and the report tile's controls).
         """
         self._last_report_path = None
         self.border_report_tile.Background = _shared_resources["SecondaryBackgroundBrush"]
@@ -1468,9 +1468,9 @@ class ReportGeneratorApp(object):
 
     def _on_delete_all_data(self, sender, e):
         """
-        Fait : demande confirmation puis vide TOUS les dossiers de donnees (hors legendes) - bouton "Tout supprimer".
-        Depend de : list_data_cleanup_folders/clear_folder_contents (00_constants.py), self._reset_report_status_tile, self._refresh_csv_files/_refresh_data_cleanup_tiles, MessageBox.
-        Retourne : rien (effet de bord sur le systeme de fichiers et l'UI, si confirme).
+        Does: asks for confirmation then clears ALL data folders (excluding legends) - "Delete all" button.
+        Depends on: list_data_cleanup_folders/clear_folder_contents (00_constants.py), self._reset_report_status_tile, self._refresh_csv_files/_refresh_data_cleanup_tiles, MessageBox.
+        Returns: nothing (side effect on the file system and the UI, if confirmed).
         """
         folders = list_data_cleanup_folders()
         if not folders:
@@ -1491,13 +1491,13 @@ class ReportGeneratorApp(object):
         self._refresh_csv_files()
         self._refresh_data_cleanup_tiles()
 
-    # --- Onglet "Fichiers" : progression + rapport genere ---
+    # --- "Files" tab: progress + generated report ---
 
     def _reset_generation_ui(self, total):
         """
-        Fait : remet la tuile de statut a l'etat neutre en debut de generation.
-        Depend de : _shared_resources, les controles progress_fill/lbl_progress_status/border_*/btn_report_*.
-        Retourne : rien (effet de bord sur les controles de la tuile de statut).
+        Does: resets the status tile to the neutral state at the start of generation.
+        Depends on: _shared_resources, the progress_fill/lbl_progress_status/border_*/btn_report_* controls.
+        Returns: nothing (side effect on the status tile's controls).
         """
         self.progress_fill.Width = 0
         self.lbl_progress_status.Text = "Generating... (0/{})".format(total)
@@ -1509,12 +1509,12 @@ class ReportGeneratorApp(object):
 
     def _update_generation_progress(self, done, total):
         """
-        Fait : avance la barre de progression, rafraichit la grille CSV et les tuiles de nettoyage, repompe la boucle de messages Win32.
-        Depend de : self.progress_fill/progress_track/lbl_progress_status, self._refresh_csv_files/_refresh_data_cleanup_tiles, SWF.Application.DoEvents().
-        Retourne : rien (effet de bord sur l'UI ; DoEvents() garde la fenetre reactive pendant la generation).
+        Does: advances the progress bar, refreshes the CSV grid and cleanup tiles, pumps the Win32 message loop.
+        Depends on: self.progress_fill/progress_track/lbl_progress_status, self._refresh_csv_files/_refresh_data_cleanup_tiles, SWF.Application.DoEvents().
+        Returns: nothing (side effect on the UI; DoEvents() keeps the window responsive during generation).
         """
-        # SWF.Application.DoEvents() (meme technique que _set_result_display_time de
-        # 05_interactive_slides.py) : sans cet appel, la fenetre gele jusqu'a la fin de la generation.
+        # SWF.Application.DoEvents() (same technique as _set_result_display_time in
+        # 05_interactive_slides.py): without this call, the window freezes until generation finishes.
         fraction = float(done) / total if total else 1.0
         self.progress_fill.Width = fraction * self.progress_track.ActualWidth
         self.lbl_progress_status.Text = "Generating... ({}/{})".format(done, total)
@@ -1524,13 +1524,13 @@ class ReportGeneratorApp(object):
 
     def _mark_report_ready(self, path):
         """
-        Fait : active la tuile PPTX (Ouvrir/Afficher dans le dossier) une fois le rapport genere.
-        Depend de : _shared_resources["ReportReadyBackgroundBrush"], self.border_report_tile/lbl_report_name/btn_report_*.
-        Retourne : rien (effet de bord sur les controles de la tuile de rapport).
+        Does: activates the PPTX tile (Open/Show in folder) once the report has been generated.
+        Depends on: _shared_resources["ReportReadyBackgroundBrush"], self.border_report_tile/lbl_report_name/btn_report_*.
+        Returns: nothing (side effect on the report tile's controls).
         """
-        # Seule la sous-tuile "resultat" (borderReportTile) passe en vert - la tuile englobante et
-        # la sous-tuile de progression restent neutres, pour ne mettre en avant que l'element qui
-        # donne effectivement acces au rapport.
+        # Only the "result" sub-tile (borderReportTile) turns green - the enclosing tile and
+        # the progress sub-tile stay neutral, so only the element that actually gives
+        # access to the report is highlighted.
         self.lbl_progress_status.Text = "Report complete"
         self.progress_fill.Width = self.progress_track.ActualWidth
         self.border_report_tile.Background = _shared_resources["ReportReadyBackgroundBrush"]
@@ -1540,36 +1540,36 @@ class ReportGeneratorApp(object):
 
     def _on_view_report(self, sender, e):
         """
-        Fait : ouvre le dernier rapport PPTX genere (bouton "Ouvrir" de la tuile de rapport).
-        Depend de : self._last_report_path, self._on_view_file.
-        Retourne : rien (effet de bord : lance PowerPoint sur le fichier si un rapport existe).
+        Does: opens the last generated PPTX report (report tile's "Open" button).
+        Depends on: self._last_report_path, self._on_view_file.
+        Returns: nothing (side effect: launches PowerPoint on the file if a report exists).
         """
         if self._last_report_path:
             self._on_view_file(self._last_report_path)
 
     def _on_show_report_in_folder(self, sender, e):
         """
-        Fait : ouvre l'explorateur Windows sur le dernier rapport PPTX genere (bouton "Afficher dans le dossier" de la tuile de rapport).
-        Depend de : self._last_report_path, self._on_show_in_folder.
-        Retourne : rien (effet de bord : lance explorer.exe si un rapport existe).
+        Does: opens Windows Explorer on the last generated PPTX report (report tile's "Show in folder" button).
+        Depends on: self._last_report_path, self._on_show_in_folder.
+        Returns: nothing (side effect: launches explorer.exe if a report exists).
         """
         if self._last_report_path:
             self._on_show_in_folder(self._last_report_path)
 
-    # --- Construction des 9 sections de selection ---
+    # --- Building the 9 selection sections ---
 
     def _build_sections(self):
         """
-        Fait : peuple les StackPanel de selection (x:Name panelXxx du XAML) avec une ligne par objet Mechanical.
-        Depend de : self._bodies/_bcs/_bolt_pretensions/etc., self._build_section, self._wire_search_box.
-        Retourne : rien (effet de bord : remplit self._sections/_section_order et les panneaux WPF).
+        Does: populates the selection StackPanels (x:Name panelXxx from the XAML) with one row per Mechanical object.
+        Depends on: self._bodies/_bcs/_bolt_pretensions/etc., self._build_section, self._wire_search_box.
+        Returns: nothing (side effect: fills self._sections/_section_order and the WPF panels).
         """
-        # Le dernier element de chaque tuple (`tagged`) indique si `objects` est une liste simple
-        # (row_config_factory(obj)) ou une liste de tuples (obj, analysis) (row_config_factory(obj,
-        # analysis), categories multi-analyses - voir ReportGeneratorApp.__init__).
-        # panel_kind identifie l'etat du panneau lateral global a afficher pour le "..." de cette
-        # section (voir ReportGeneratorApp._open_config_panel) - None si la categorie n'a rien a
-        # configurer (Contacts a afficher : juste une case a cocher, pas de vue/coupe/etc).
+        # The last element of each tuple (`tagged`) indicates whether `objects` is a plain list
+        # (row_config_factory(obj)) or a list of (obj, analysis) tuples (row_config_factory(obj,
+        # analysis), multi-analysis categories - see ReportGeneratorApp.__init__).
+        # panel_kind identifies the state of the global side panel to display for this section's
+        # "..." (see ReportGeneratorApp._open_config_panel) - None if the category has nothing to
+        # configure (Contacts to display: just a checkbox, no view/section/etc).
         section_defs = [
             ("GeometryParts", "panelGeometryParts", "searchGeometryParts", "general",
              "Parts to isolate (geometry)", self._bodies,
@@ -1628,27 +1628,27 @@ class ReportGeneratorApp(object):
 
     def _attach_list_fade(self, scroll):
         """
-        Fait : ajoute un fondu blanc en bas de scroll (OpacityMask sur le ScrollViewer lui-meme,
-        pas de Border de recouvrement separe - inutile ici puisque ces listes reposent toujours sur
-        un fond CardBorder blanc uni), visible uniquement quand le contenu deborde reellement de la
-        hauteur visible. Meme intention que _build_preview_list_container, mecanisme adapte puisque
-        ces ScrollViewer sont directement definis dans le XAML (hauteur variable/MaxHeight="210" ou
-        etiree, contrairement a la hauteur fixe des cartes d'apercu).
-        Depend de : ITEM_LIST_FADE_HEIGHT, scroll.ScrollChanged/ActualHeight/ScrollableHeight.
-        Retourne : rien (effet de bord : scroll.OpacityMask recalcule a chaque ScrollChanged).
+        Does: adds a white fade at the bottom of scroll (OpacityMask on the ScrollViewer itself,
+        no separate overlay Border - unnecessary here since these lists always sit on a solid
+        white CardBorder background), visible only when the content actually overflows the
+        visible height. Same intent as _build_preview_list_container, mechanism adapted since
+        these ScrollViewer are defined directly in the XAML (variable height/MaxHeight="210" or
+        stretched, unlike the fixed height of the preview cards).
+        Depends on: ITEM_LIST_FADE_HEIGHT, scroll.ScrollChanged/ActualHeight/ScrollableHeight.
+        Returns: nothing (side effect: scroll.OpacityMask recalculated on every ScrollChanged).
         """
-        # Espace vide ajoute sous la derniere ligne, de la meme hauteur que le fondu : sans lui, la
-        # derniere ligne se retrouve exactement sous la zone de fondu (voire tronquee par le bas du
-        # ScrollViewer) et devient illisible une fois tout en bas de la liste.
+        # Empty space added below the last row, the same height as the fade: without it, the
+        # last row ends up exactly under the fade area (or even truncated by the bottom of the
+        # ScrollViewer) and becomes unreadable once fully scrolled to the bottom of the list.
         content = scroll.Content
         if content is not None:
             content.Margin = Thickness(0, 0, 0, ITEM_LIST_FADE_HEIGHT)
 
         def update_fade(sender, e):
             """
-            Fait : recalcule le masque d'opacite de scroll a chaque changement de defilement/contenu.
-            Depend de : scroll (capture par la fermeture), ITEM_LIST_FADE_HEIGHT.
-            Retourne : rien (effet de bord sur scroll.OpacityMask).
+            Does: recalculates scroll's opacity mask on every scroll/content change.
+            Depends on: scroll (captured by the closure), ITEM_LIST_FADE_HEIGHT.
+            Returns: nothing (side effect on scroll.OpacityMask).
             """
             height = scroll.ActualHeight
             if height <= 0 or scroll.ScrollableHeight <= 0:
@@ -1668,9 +1668,9 @@ class ReportGeneratorApp(object):
 
     def _build_section(self, panel, objects, row_config_factory, display_name_func, panel_kind, tagged=False):
         """
-        Fait : construit toutes les lignes WPF d'une section a partir des objets Mechanical fournis.
-        Depend de : row_config_factory, self._build_row.
-        Retourne : list de SectionRow, une par objet, dans l'ordre de `objects`.
+        Does: builds all the WPF rows of a section from the given Mechanical objects.
+        Depends on: row_config_factory, self._build_row.
+        Returns: list of SectionRow, one per object, in the order of `objects`.
         """
         rows = []
         for entry in objects:
@@ -1686,13 +1686,13 @@ class ReportGeneratorApp(object):
 
     def _build_row(self, row_config, display_name_func, panel_kind):
         """
-        Fait : construit une ligne WPF (Border > Grid[CheckBox | TextBlock | Button?]) pour un row_config.
-        Depend de : SectionRow, _row_status_brush, self._make_toggle_handler/_make_config_click_handler.
-        Retourne : SectionRow, la ligne construite et cablee (evenements Checked/Unchecked/Click).
+        Does: builds a WPF row (Border > Grid[CheckBox | TextBlock | Button?]) for a row_config.
+        Depends on: SectionRow, _row_status_brush, self._make_toggle_handler/_make_config_click_handler.
+        Returns: SectionRow, the built and wired row (Checked/Unchecked/Click events).
         """
-        # Colonne du nom en largeur "Star" avec TextTrimming.CharacterEllipsis : le texte ne peut
-        # jamais deborder sur le bouton "..." ni sur un controle voisin (contrairement a des
-        # colonnes en pixels fixes).
+        # Name column with "Star" width and TextTrimming.CharacterEllipsis: the text can
+        # never overflow onto the "..." button or a neighboring control (unlike
+        # fixed-pixel columns).
         grid = Grid()
 
         col_check = ColumnDefinition()
@@ -1724,8 +1724,8 @@ class ReportGeneratorApp(object):
             grid.ColumnDefinitions.Add(col_button)
 
             config_button = Button()
-            # SecondaryButton est une ressource nommee (pas un style par defaut par TargetType) :
-            # sans cette ligne, ce bouton garde le chrome Windows clair par defaut.
+            # SecondaryButton is a named resource (not a default TargetType-based style):
+            # without this line, this button keeps the default light Windows chrome.
             config_button.Style = self.window.FindResource("SecondaryButton")
             config_button.Content = "..."
             config_button.Padding = Thickness(6, 2, 6, 2)
@@ -1754,15 +1754,15 @@ class ReportGeneratorApp(object):
 
     def _make_toggle_handler(self, row):
         """
-        Fait : ferme row par valeur pour produire le handler Checked/Unchecked d'une CheckBox de ligne.
-        Depend de : _row_status_brush, self._update_preview.
-        Retourne : function, le handler(sender, e) a cabler sur checkbox.Checked/Unchecked.
+        Does: closes over row by value to produce the Checked/Unchecked handler of a row's CheckBox.
+        Depends on: _row_status_brush, self._update_preview.
+        Returns: function, the handler(sender, e) to wire on checkbox.Checked/Unchecked.
         """
         def handler(sender, e):
             """
-            Fait : recalcule la couleur de statut (3 etats) de la ligne et rafraichit l'apercu.
-            Depend de : _row_status_brush, self._update_preview, row capture par la fermeture.
-            Retourne : rien (effet de bord sur row.border.Background et l'apercu).
+            Does: recalculates the row's status color (3 states) and refreshes the preview.
+            Depends on: _row_status_brush, self._update_preview, row captured by the closure.
+            Returns: nothing (side effect on row.border.Background and the preview).
             """
             row.border.Background = _row_status_brush(row)
             self._update_preview()
@@ -1770,56 +1770,56 @@ class ReportGeneratorApp(object):
 
     def _make_config_click_handler(self, row):
         """
-        Fait : ferme row par valeur pour produire le handler Click du bouton "..." d'une ligne.
-        Depend de : self._on_row_config_click.
-        Retourne : function, le handler(sender, e) a cabler sur config_button.Click.
+        Does: closes over row by value to produce the Click handler of a row's "..." button.
+        Depends on: self._on_row_config_click.
+        Returns: function, the handler(sender, e) to wire on config_button.Click.
         """
-        # Fermeture necessaire : la boucle appelante (_build_section) reutilise sa variable de
-        # boucle, une reference directe a row capturerait toujours la derniere iteration.
+        # Closure necessary: the calling loop (_build_section) reuses its loop
+        # variable, a direct reference to row would always capture the last iteration.
         def handler(sender, e):
             """
-            Fait : ouvre la boite de dialogue "..." de la ligne.
-            Depend de : self._on_row_config_click, row capture par la fermeture.
-            Retourne : rien (effet de bord : peut modifier row.row_config).
+            Does: opens the row's "..." dialog.
+            Depends on: self._on_row_config_click, row captured by the closure.
+            Returns: nothing (side effect: may modify row.row_config).
             """
             self._on_row_config_click(row)
         return handler
 
     def _on_row_config_click(self, row):
         """
-        Fait : ouvre le panneau lateral global de configuration pour la ligne cliquee.
-        Depend de : row.panel_kind/row_config/display_name_func, self._open_config_panel.
-        Retourne : rien (effet de bord : affiche borderConfigPanel).
+        Does: opens the global configuration side panel for the clicked row.
+        Depends on: row.panel_kind/row_config/display_name_func, self._open_config_panel.
+        Returns: nothing (side effect: shows borderConfigPanel).
         """
         def refresh():
             """
-            Fait : rafraichit le texte/la couleur de statut de la ligne et l'apercu apres "Appliquer".
-            Depend de : row (capture par la fermeture), _row_status_brush, self._update_preview.
-            Retourne : rien (effet de bord sur row.text_block/row.border et l'apercu).
+            Does: refreshes the row's text/status color and the preview after "Apply".
+            Depends on: row (captured by the closure), _row_status_brush, self._update_preview.
+            Returns: nothing (side effect on row.text_block/row.border and the preview).
             """
             row.text_block.Text = row.display_name_func(row.row_config)
             row.border.Background = _row_status_brush(row)
             self._update_preview()
         self._open_config_panel(row.panel_kind, row.row_config, refresh)
 
-    # --- Panneau lateral global de configuration ("...") ---
-    # Remplace les 4 boites de dialogue modales d'origine (RowConfigWindow, GeometryPartConfigWindow,
-    # MeshPartConfigWindow, SolutionInfoConfigWindow - voir SECTION 4/5/5bis/6) : un seul panneau,
-    # cache par defaut (borderConfigPanel.Visibility = Collapsed), qui affiche l'un de 4 "kinds" de
-    # champs selon la ligne cliquee ("result"/"geometry_part"/"mesh_part"/"solution_info").
-    # "Appliquer" valide et ferme (comme l'ancien bouton OK) ; "Annuler"/le bouton "x" ferment sans
-    # valider (comme l'ancien bouton Annuler/la fermeture de la fenetre).
+    # --- Global configuration side panel ("...") ---
+    # Replaces the original 4 modal dialog boxes (RowConfigWindow, GeometryPartConfigWindow,
+    # MeshPartConfigWindow, SolutionInfoConfigWindow - see SECTION 4/5/5bis/6): a single panel,
+    # hidden by default (borderConfigPanel.Visibility = Collapsed), which displays one of 4 field
+    # "kinds" depending on the clicked row ("result"/"geometry_part"/"mesh_part"/"solution_info").
+    # "Apply" validates and closes (like the old OK button); "Cancel"/the "x" button close without
+    # validating (like the old Cancel button/closing the window).
 
     def _open_config_panel(self, kind, row_config, refresh_callback, bulk_rows=None):
         """
-        Fait : ouvre le panneau lateral global pour row_config, dans l'etat kind, et l'affiche. Si
-        bulk_rows est fourni (voir self._on_bulk_config_click), le panneau s'ouvre en mode groupe :
-        row_config ne sert alors qu'a peupler les valeurs initiales des champs (celles de la
-        premiere ligne cochee), et "Appliquer" ecrit dans TOUTES les lignes de bulk_rows (voir
-        self._on_config_panel_apply) au lieu de la seule row_config.
-        Depend de : self.panel_config_panel/border_config_panel, _build_row_config_fields/_build_steps_section_fields/
+        Does: opens the global side panel for row_config, in the kind state, and shows it. If
+        bulk_rows is provided (see self._on_bulk_config_click), the panel opens in bulk mode:
+        row_config then only serves to populate the fields' initial values (those of the
+        first checked row), and "Apply" writes to ALL rows in bulk_rows (see
+        self._on_config_panel_apply) instead of row_config alone.
+        Depends on: self.panel_config_panel/border_config_panel, _build_row_config_fields/_build_steps_section_fields/
             _build_geometry_part_fields/_build_mesh_part_fields/_build_solution_info_fields, _ConfigFieldsHolder.
-        Retourne : rien (effet de bord : peuple panelConfigPanel, rend borderConfigPanel visible).
+        Returns: nothing (side effect: populates panelConfigPanel, makes borderConfigPanel visible).
         """
         self._config_panel_kind = kind
         self._config_panel_row_config = row_config
@@ -1868,10 +1868,10 @@ class ReportGeneratorApp(object):
         panel.Children.Add(header)
 
         if bulk_rows:
-            # Bandeau d'avertissement a la place du badge configured/to configure (qui n'a pas de
-            # sens pour un groupe de lignes potentiellement dans des etats differents) : rappelle
-            # explicitement l'effet du bouton "Appliquer" avant qu'il n'ecrase quoi que ce soit -
-            # la seule vraie garde-fou de ce mode, avec le bouton "Annuler" toujours disponible.
+            # Warning banner in place of the configured/to configure badge (which wouldn't make
+            # sense for a group of rows potentially in different states): explicitly reminds
+            # the user of the effect of the "Apply" button before it overwrites anything -
+            # the only real safeguard of this mode, along with the "Cancel" button always being available.
             banner = Border()
             banner.Background = ROW_STATUS_SELECTED_BRUSH
             banner.CornerRadius = CornerRadius(0)
@@ -1902,10 +1902,10 @@ class ReportGeneratorApp(object):
         fields = self._config_panel_fields
         if kind == "result":
             if bulk_rows:
-                # Le nombre de loadcases proposes est le MINIMUM parmi toutes les lignes cochees
-                # (elles peuvent venir d'analyses differentes - BC/BP/Resultats/etc sont
-                # multi-analyses, voir section_defs) : impossible de cocher un step qui n'existe
-                # pas pour l'une des lignes, plutot que de le filtrer silencieusement a l'application.
+                # The number of proposed loadcases is the MINIMUM across all checked rows
+                # (they may come from different analyses - BC/BP/Results/etc are
+                # multi-analysis, see section_defs): it's impossible to check a step that doesn't
+                # exist for one of the rows, rather than silently filtering it out on apply.
                 step_count = min(
                     (get_step_count(row.row_config.analysis) if row.row_config.analysis is not None
                      else self._step_count)
@@ -1921,8 +1921,8 @@ class ReportGeneratorApp(object):
             _build_geometry_part_fields(fields, panel, row_config, self._views, self._section_plane_labels)
         elif kind == "mesh_part":
             _build_mesh_part_fields(fields, panel, row_config, self._views)
-            # Le choix du tableau de maillage n'a de sens que pour la ligne Maillage elle-meme
-            # (les autres lignes "mesh_part" - pieces isolees, contexte d'analyse - n'en ont pas).
+            # The mesh table choice only makes sense for the Mesh row itself
+            # (the other "mesh_part" rows - isolated parts, analysis context - don't have one).
             if row_config is self._mesh_view_config:
                 panel.Children.Add(_make_field_label("Mesh table:"))
                 fields.cmb_mesh_table = ComboBox()
@@ -1957,14 +1957,14 @@ class ReportGeneratorApp(object):
 
     def _apply_config_fields_to_row_config(self, kind, fields, row_config):
         """
-        Fait : lit les champs du panneau (fields) et les applique a UNE row_config donnee, selon kind.
-        N'appelle jamais l'API Mechanical (uniquement des ecritures d'attributs Python sur
-        row_config) : c'est ce qui rend cette fonction sure a appeler en boucle depuis
-        _on_config_panel_apply en mode groupe, contrairement a une reconstruction de panneau WPF par
-        ligne (voir l'historique de la fonctionnalite "Config. groupee" reverte precedemment).
-        Depend de : _apply_row_config_fields/_apply_steps_section_fields/_apply_geometry_part_fields/
+        Does: reads the panel's fields (fields) and applies them to ONE given row_config, based on kind.
+        Never calls the Mechanical API (only Python attribute writes on
+        row_config): this is what makes this function safe to call in a loop from
+        _on_config_panel_apply in bulk mode, unlike rebuilding a WPF panel per
+        row (see the history of the previously reverted "bulk config" feature).
+        Depends on: _apply_row_config_fields/_apply_steps_section_fields/_apply_geometry_part_fields/
             _apply_mesh_part_fields/_apply_solution_info_fields.
-        Retourne : rien (effet de bord sur row_config uniquement).
+        Returns: nothing (side effect on row_config only).
         """
         if kind == "result":
             _apply_row_config_fields(fields, row_config)
@@ -1981,14 +1981,14 @@ class ReportGeneratorApp(object):
 
     def _on_config_panel_apply(self, sender, e):
         """
-        Fait : valide la configuration en cours dans le panneau lateral (bouton "Appliquer") et le
-        ferme. En mode groupe (self._config_panel_bulk_rows non vide), applique les memes champs a
-        CHAQUE ligne cochee (une ecriture d'attributs par ligne, sans reconstruction de panneau WPF
-        ni appel API Mechanical dans la boucle - voir _apply_config_fields_to_row_config) puis
-        rafraichit chaque ligne et l'apercu une seule fois a la fin.
-        Depend de : self._config_panel_kind/_row_config/_fields/_refresh/_bulk_rows,
+        Does: validates the configuration currently in the side panel ("Apply" button) and closes
+        it. In bulk mode (self._config_panel_bulk_rows non-empty), applies the same fields to
+        EVERY checked row (one attribute write per row, without rebuilding a WPF panel
+        or calling the Mechanical API in the loop - see _apply_config_fields_to_row_config) then
+        refreshes each row and the preview only once at the end.
+        Depends on: self._config_panel_kind/_row_config/_fields/_refresh/_bulk_rows,
             _apply_config_fields_to_row_config, _row_status_brush, self._update_preview.
-        Retourne : rien (effet de bord : met a jour row_config.configured et rafraichit l'appelant, ferme le panneau).
+        Returns: nothing (side effect: updates row_config.configured and refreshes the caller, closes the panel).
         """
         kind = self._config_panel_kind
         fields = self._config_panel_fields
@@ -2012,17 +2012,17 @@ class ReportGeneratorApp(object):
 
     def _on_config_panel_close(self, sender, e):
         """
-        Fait : ferme le panneau lateral sans valider (bouton "Annuler" ou "x").
-        Depend de : self._close_config_panel.
-        Retourne : rien (effet de bord : cache borderConfigPanel).
+        Does: closes the side panel without validating ("Cancel" or "x" button).
+        Depends on: self._close_config_panel.
+        Returns: nothing (side effect: hides borderConfigPanel).
         """
         self._close_config_panel()
 
     def _close_config_panel(self):
         """
-        Fait : vide et cache le panneau lateral global de configuration.
-        Depend de : self.panel_config_panel/border_config_panel.
-        Retourne : rien (effet de bord : reinitialise l'etat _config_panel_*).
+        Does: clears and hides the global configuration side panel.
+        Depends on: self.panel_config_panel/border_config_panel.
+        Returns: nothing (side effect: resets the _config_panel_* state).
         """
         self._config_panel_kind = None
         self._config_panel_row_config = None
@@ -2032,19 +2032,19 @@ class ReportGeneratorApp(object):
         self.panel_config_panel.Children.Clear()
         self.border_config_panel.Visibility = Visibility.Collapsed
 
-    # --- Onglet "Slide combinee (differents resultats)" ---
-    # Plus aucune fenetre separee (voir SECTION 6bis) : le choix du template peuple
-    # panelMultiResultTemplateButtons, la grille vit dans gridMultiResultCells (8 cases, seules les
-    # N premieres du template choisi sont actives), et panelMultiResultSidePanel affiche l'un de 3
-    # etats pour la case selectionnee - aucune case (_show_multi_result_placeholder), choix du
-    # resultat (_show_multi_result_picker) ou configuration graphique complete (_show_multi_result_editor,
-    # memes champs qu'une slide normale via _build_row_config_fields, sans notion de step).
+    # --- "Combined slide (different results)" tab ---
+    # No more separate window (see SECTION 6bis): the template choice populates
+    # panelMultiResultTemplateButtons, the grid lives in gridMultiResultCells (8 cells, only the
+    # first N of the chosen template are active), and panelMultiResultSidePanel shows one of 3
+    # states for the selected cell - no cell (_show_multi_result_placeholder), result choice
+    # (_show_multi_result_picker), or full graphics configuration (_show_multi_result_editor,
+    # same fields as a normal slide via _build_row_config_fields, without a step notion).
 
     def _build_multi_result_tab(self):
         """
-        Fait : peuple les boutons de template et initialise la grille/le panneau lateral au chargement de la fenetre.
-        Depend de : self.panel_multi_result_template_buttons, MULTI_STEP_SLIDE_TEMPLATES, self._set_multi_result_template.
-        Retourne : rien (effet de bord sur l'onglet "Slide combinee").
+        Does: populates the template buttons and initializes the grid/side panel when the window loads.
+        Depends on: self.panel_multi_result_template_buttons, MULTI_STEP_SLIDE_TEMPLATES, self._set_multi_result_template.
+        Returns: nothing (side effect on the "Combined slide" tab).
         """
         self.panel_multi_result_template_buttons.Children.Clear()
         self._mr_template_buttons = {}
@@ -2068,17 +2068,17 @@ class ReportGeneratorApp(object):
 
     def _on_pick_multi_result_template(self, sender, e):
         """
-        Fait : reagit au clic sur un bouton de template (2/3/4/6/8 resultats).
-        Depend de : sender.Tag, self._set_multi_result_template.
-        Retourne : rien (effet de bord : change de template, reinitialise la grille en cours).
+        Does: reacts to clicking a template button (2/3/4/6/8 results).
+        Depends on: sender.Tag, self._set_multi_result_template.
+        Returns: nothing (side effect: switches template, resets the grid under construction).
         """
         self._set_multi_result_template(sender.Tag)
 
     def _set_multi_result_template(self, count):
         """
-        Fait : selectionne un template (nombre de cases actives) et reinitialise entierement la grille en cours de construction.
-        Depend de : self._mr_cell_configs/_refresh_multi_result_template_buttons/_rebuild_multi_result_grid/_show_multi_result_placeholder/_update_multi_result_fill_count.
-        Retourne : rien (effet de bord sur l'etat de l'onglet "Slide combinee").
+        Does: selects a template (number of active cells) and fully resets the grid under construction.
+        Depends on: self._mr_cell_configs/_refresh_multi_result_template_buttons/_rebuild_multi_result_grid/_show_multi_result_placeholder/_update_multi_result_fill_count.
+        Returns: nothing (side effect on the "Combined slide" tab's state).
         """
         self._mr_template_count = count
         self._mr_cell_configs = [None] * MULTI_RESULT_CELL_TOTAL
@@ -2089,18 +2089,18 @@ class ReportGeneratorApp(object):
 
     def _refresh_multi_result_template_buttons(self):
         """
-        Fait : met en evidence (PrimaryButton) le bouton du template actuellement selectionne, les autres restant SecondaryButton.
-        Depend de : self._mr_template_buttons/_mr_template_count, _shared_resources.
-        Retourne : rien (effet de bord sur le Style des boutons de template).
+        Does: highlights (PrimaryButton) the currently selected template's button, the others remaining SecondaryButton.
+        Depends on: self._mr_template_buttons/_mr_template_count, _shared_resources.
+        Returns: nothing (side effect on the Style of the template buttons).
         """
         for count, btn in self._mr_template_buttons.items():
             btn.Style = _shared_resources["PrimaryButton" if count == self._mr_template_count else "SecondaryButton"]
 
     def _rebuild_multi_result_grid(self):
         """
-        Fait : reconstruit les 8 cases de la grille (seules les N premieres du template choisi sont actives et cliquables).
-        Depend de : self.grid_multi_result_cells, self._mr_template_count, self._make_multi_result_cell_click_handler.
-        Retourne : rien (effet de bord : repeuple self._mr_cell_borders/_mr_cell_labels et gridMultiResultCells).
+        Does: rebuilds the grid's 8 cells (only the first N of the chosen template are active and clickable).
+        Depends on: self.grid_multi_result_cells, self._mr_template_count, self._make_multi_result_cell_click_handler.
+        Returns: nothing (side effect: repopulates self._mr_cell_borders/_mr_cell_labels and gridMultiResultCells).
         """
         self.grid_multi_result_cells.Children.Clear()
         self._mr_cell_borders = []
@@ -2147,9 +2147,9 @@ class ReportGeneratorApp(object):
 
     def _make_multi_result_cell_click_handler(self, index):
         """
-        Fait : ferme index par valeur pour produire le handler de clic d'une case active de la grille.
-        Depend de : self._on_multi_result_cell_click.
-        Retourne : function, le handler(sender, e) a cabler sur cell.MouseLeftButtonUp.
+        Does: closes over index by value to produce the click handler of an active grid cell.
+        Depends on: self._on_multi_result_cell_click.
+        Returns: function, the handler(sender, e) to wire on cell.MouseLeftButtonUp.
         """
         def handler(sender, e):
             self._on_multi_result_cell_click(index)
@@ -2157,9 +2157,9 @@ class ReportGeneratorApp(object):
 
     def _on_multi_result_cell_click(self, index):
         """
-        Fait : selectionne la case cliquee et affiche le panneau approprie a droite (choix du resultat si vide, edition directe si deja configuree).
-        Depend de : self._mr_cell_configs/_mr_selected_cell_index, self._show_multi_result_picker/_show_multi_result_editor, self._update_multi_result_cell_visual.
-        Retourne : rien (effet de bord sur l'etat de selection et le panneau lateral).
+        Does: selects the clicked cell and shows the appropriate panel on the right (result choice if empty, direct editing if already configured).
+        Depends on: self._mr_cell_configs/_mr_selected_cell_index, self._show_multi_result_picker/_show_multi_result_editor, self._update_multi_result_cell_visual.
+        Returns: nothing (side effect on the selection state and the side panel).
         """
         self._mr_selected_cell_index = index
         for i in range(len(self._mr_cell_borders)):
@@ -2174,9 +2174,9 @@ class ReportGeneratorApp(object):
 
     def _update_multi_result_cell_visual(self, index):
         """
-        Fait : rafraichit le fond/texte/bordure d'une case active selon son etat (configuree, et/ou actuellement selectionnee).
-        Depend de : self._mr_cell_configs/_mr_selected_cell_index/_mr_cell_borders/_mr_cell_labels, GRID_CELL_*_BRUSH.
-        Retourne : rien (effet de bord sur les controles WPF de la case).
+        Does: refreshes the background/text/border of an active cell according to its state (configured, and/or currently selected).
+        Depends on: self._mr_cell_configs/_mr_selected_cell_index/_mr_cell_borders/_mr_cell_labels, GRID_CELL_*_BRUSH.
+        Returns: nothing (side effect on the cell's WPF controls).
         """
         cfg = self._mr_cell_configs[index]
         border = self._mr_cell_borders[index]
@@ -2198,9 +2198,9 @@ class ReportGeneratorApp(object):
 
     def _show_multi_result_placeholder(self):
         """
-        Fait : affiche le panneau lateral par defaut (aucune case selectionnee) et deselectionne visuellement la grille.
-        Depend de : self.panel_multi_result_side, self._mr_selected_cell_index, self._update_multi_result_cell_visual.
-        Retourne : rien (effet de bord sur panelMultiResultSidePanel et la grille).
+        Does: shows the default side panel (no cell selected) and visually deselects the grid.
+        Depends on: self.panel_multi_result_side, self._mr_selected_cell_index, self._update_multi_result_cell_visual.
+        Returns: nothing (side effect on panelMultiResultSidePanel and the grid).
         """
         self._mr_editing = None
         previous_index = self._mr_selected_cell_index
@@ -2220,16 +2220,16 @@ class ReportGeneratorApp(object):
 
     def _show_multi_result_picker(self, index, current_result=None):
         """
-        Fait : affiche dans le panneau lateral la liste (filtrable) des resultats disponibles pour la case index.
-        Depend de : self.panel_multi_result_side, self._results, self._init_search_placeholder, self._make_multi_result_pick_handler.
-        Retourne : rien (effet de bord sur panelMultiResultSidePanel ; repeuple self._mr_picker_rows).
+        Does: shows in the side panel the (filterable) list of results available for cell index.
+        Depends on: self.panel_multi_result_side, self._results, self._init_search_placeholder, self._make_multi_result_pick_handler.
+        Returns: nothing (side effect on panelMultiResultSidePanel; repopulates self._mr_picker_rows).
         """
         self._mr_editing = None
         self.panel_multi_result_side.Children.Clear()
 
-        # Meme en-tete (kicker + titre + "x" en haut a droite) que _show_multi_result_editor et
-        # _open_config_panel : les 3 etats du panneau lateral doivent se fermer de la meme facon,
-        # pas de bouton "Fermer" texte en bas uniquement pour cet etat.
+        # Same header (kicker + title + "x" in the top right) as _show_multi_result_editor and
+        # _open_config_panel: all 3 states of the side panel must close the same way,
+        # no text "Close" button at the bottom just for this state.
         header = Grid()
         col_title = ColumnDefinition()
         col_title.Width = GridLength(1, GridUnitType.Star)
@@ -2300,9 +2300,9 @@ class ReportGeneratorApp(object):
 
     def _on_multi_result_search_changed(self, sender, e):
         """
-        Fait : filtre en direct la liste "Choisir un resultat" selon le texte tape (sous-chaine, insensible a la casse).
-        Depend de : sender (le TextBox de recherche), self._mr_picker_rows, SEARCH_PLACEHOLDER.
-        Retourne : rien (effet de bord : Visibility des lignes de self._mr_picker_rows).
+        Does: live-filters the "Choose a result" list based on the typed text (substring, case-insensitive).
+        Depends on: sender (the search TextBox), self._mr_picker_rows, SEARCH_PLACEHOLDER.
+        Returns: nothing (side effect: Visibility of the rows in self._mr_picker_rows).
         """
         text = sender.Text
         if text == SEARCH_PLACEHOLDER:
@@ -2314,9 +2314,9 @@ class ReportGeneratorApp(object):
 
     def _make_multi_result_pick_handler(self, index, result):
         """
-        Fait : ferme index/result par valeur pour produire le handler de clic d'une ligne de la liste "Choisir un resultat".
-        Depend de : self._on_multi_result_pick.
-        Retourne : function, le handler(sender, e) a cabler sur row_border.MouseLeftButtonUp.
+        Does: closes over index/result by value to produce the click handler of a "Choose a result" list row.
+        Depends on: self._on_multi_result_pick.
+        Returns: function, the handler(sender, e) to wire on row_border.MouseLeftButtonUp.
         """
         def handler(sender, e):
             self._on_multi_result_pick(index, result)
@@ -2324,13 +2324,13 @@ class ReportGeneratorApp(object):
 
     def _on_multi_result_pick(self, index, result):
         """
-        Fait : reagit au choix d'un resultat pour la case index et bascule le panneau lateral en mode edition.
-        Depend de : self._mr_cell_configs, SlideRowConfig, self._show_multi_result_editor.
-        Retourne : rien (effet de bord sur panelMultiResultSidePanel).
+        Does: reacts to choosing a result for cell index and switches the side panel to edit mode.
+        Depends on: self._mr_cell_configs, SlideRowConfig, self._show_multi_result_editor.
+        Returns: nothing (side effect on panelMultiResultSidePanel).
         """
         existing_cfg = self._mr_cell_configs[index]
-        # Reutilise la config existante (garde vue/coupe/legende/etc deja choisis) si le meme
-        # resultat est reselectionne ; repart d'une config vierge si l'utilisateur change de resultat.
+        # Reuses the existing config (keeps view/section/legend/etc already chosen) if the same
+        # result is reselected; starts from a blank config if the user changes result.
         if existing_cfg is not None and existing_cfg.obj == result:
             cfg = existing_cfg
         else:
@@ -2339,9 +2339,9 @@ class ReportGeneratorApp(object):
 
     def _show_multi_result_editor(self, index, cfg):
         """
-        Fait : affiche dans le panneau lateral la configuration graphique complete (vue/coupe/legende/apparence/scale factor, sans steps) de la case index pour le resultat cfg.obj.
-        Depend de : self.panel_multi_result_side, _build_row_config_fields, _ConfigFieldsHolder, ROW_STATUS_*_BRUSH.
-        Retourne : rien (effet de bord sur panelMultiResultSidePanel ; initialise self._mr_editing/_mr_editor_fields).
+        Does: shows in the side panel the full graphics configuration (view/section/legend/appearance/scale factor, without steps) of cell index for the result cfg.obj.
+        Depends on: self.panel_multi_result_side, _build_row_config_fields, _ConfigFieldsHolder, ROW_STATUS_*_BRUSH.
+        Returns: nothing (side effect on panelMultiResultSidePanel; initializes self._mr_editing/_mr_editor_fields).
         """
         self._mr_editing = (index, cfg)
         self.panel_multi_result_side.Children.Clear()
@@ -2419,9 +2419,9 @@ class ReportGeneratorApp(object):
 
     def _make_multi_result_change_handler(self, index, cfg):
         """
-        Fait : ferme index/cfg par valeur pour produire le handler du bouton "Changer de resultat" de l'editeur de case.
-        Depend de : self._show_multi_result_picker.
-        Retourne : function, le handler(sender, e) a cabler sur btn_change.Click.
+        Does: closes over index/cfg by value to produce the handler of the cell editor's "Change result" button.
+        Depends on: self._show_multi_result_picker.
+        Returns: function, the handler(sender, e) to wire on btn_change.Click.
         """
         def handler(sender, e):
             self._show_multi_result_picker(index, cfg.obj)
@@ -2429,17 +2429,17 @@ class ReportGeneratorApp(object):
 
     def _on_multi_result_close_editor(self, sender, e):
         """
-        Fait : ferme le panneau de case (picker ou editeur) sans valider, retour a l'etat "aucune case selectionnee".
-        Depend de : self._show_multi_result_placeholder.
-        Retourne : rien (effet de bord sur panelMultiResultSidePanel).
+        Does: closes the cell panel (picker or editor) without validating, back to the "no cell selected" state.
+        Depends on: self._show_multi_result_placeholder.
+        Returns: nothing (side effect on panelMultiResultSidePanel).
         """
         self._show_multi_result_placeholder()
 
     def _on_multi_result_apply(self, sender, e):
         """
-        Fait : valide la configuration graphique de la case en cours d'edition (bouton "Appliquer").
-        Depend de : self._mr_editing/_mr_editor_fields, _apply_row_config_fields, self._update_multi_result_cell_visual/_update_multi_result_fill_count.
-        Retourne : rien (effet de bord : met a jour self._mr_cell_configs et rafraichit la case/le panneau).
+        Does: validates the graphics configuration of the cell currently being edited ("Apply" button).
+        Depends on: self._mr_editing/_mr_editor_fields, _apply_row_config_fields, self._update_multi_result_cell_visual/_update_multi_result_fill_count.
+        Returns: nothing (side effect: updates self._mr_cell_configs and refreshes the cell/panel).
         """
         if self._mr_editing is None:
             return
@@ -2453,9 +2453,9 @@ class ReportGeneratorApp(object):
 
     def _update_multi_result_fill_count(self):
         """
-        Fait : rafraichit le compteur "X / N cases remplies" au-dessus de la grille.
-        Depend de : self.lbl_multi_result_fill_count, self._mr_template_count/_mr_cell_configs.
-        Retourne : rien (effet de bord sur lblMultiResultFillCount).
+        Does: refreshes the "X / N cells filled" counter above the grid.
+        Depends on: self.lbl_multi_result_fill_count, self._mr_template_count/_mr_cell_configs.
+        Returns: nothing (side effect on lblMultiResultFillCount).
         """
         if not self._mr_template_count:
             self.lbl_multi_result_fill_count.Text = ""
@@ -2465,9 +2465,9 @@ class ReportGeneratorApp(object):
 
     def _on_multi_result_add_to_report(self, sender, e):
         """
-        Fait : valide que toutes les cases actives sont configurees, ajoute la slide combinee a l'apercu du rapport (generation differee) et reinitialise la grille pour en construire une autre.
-        Depend de : self._mr_template_count/_mr_cell_configs, MultiResultSlideConfig, self._multi_result_slides, self._update_preview, self._set_multi_result_template.
-        Retourne : rien (effet de bord : peut ajouter une entree a self._multi_result_slides et rafraichir l'apercu).
+        Does: validates that all active cells are configured, adds the combined slide to the report preview (deferred generation) and resets the grid to build another one.
+        Depends on: self._mr_template_count/_mr_cell_configs, MultiResultSlideConfig, self._multi_result_slides, self._update_preview, self._set_multi_result_template.
+        Returns: nothing (side effect: may add an entry to self._multi_result_slides and refresh the preview).
         """
         if not self._mr_template_count:
             MessageBox.Show("First choose a template (number of results to combine).",
@@ -2487,25 +2487,25 @@ class ReportGeneratorApp(object):
         self._update_preview()
         print "Combined slide added to the report preview ({} results).".format(self._mr_template_count)
 
-        # Repart d'une grille vierge sur le meme template, pour en construire une autre a la suite.
+        # Starts over with a blank grid on the same template, to build another one right after.
         self._set_multi_result_template(self._mr_template_count)
 
-    # --- Champs de recherche : texte indicatif grise ---
+    # --- Search fields: greyed-out placeholder text ---
 
     def _init_search_placeholder(self, search_box):
         """
-        Fait : initialise un champ de recherche avec son texte indicatif ("Rechercher...", grise).
-        Depend de : SEARCH_PLACEHOLDER, SEARCH_PLACEHOLDER_BRUSH, SEARCH_TEXT_BRUSH.
-        Retourne : rien (effet de bord : configure search_box et cable GotFocus/LostFocus).
+        Does: initializes a search field with its placeholder text ("Search...", greyed out).
+        Depends on: SEARCH_PLACEHOLDER, SEARCH_PLACEHOLDER_BRUSH, SEARCH_TEXT_BRUSH.
+        Returns: nothing (side effect: configures search_box and wires GotFocus/LostFocus).
         """
         search_box.Text = SEARCH_PLACEHOLDER
         search_box.Foreground = SEARCH_PLACEHOLDER_BRUSH
 
         def on_got_focus(sender, e):
             """
-            Fait : efface le texte indicatif quand l'utilisateur clique dans le champ.
-            Depend de : SEARCH_PLACEHOLDER, SEARCH_TEXT_BRUSH, search_box capture par la fermeture.
-            Retourne : rien (effet de bord sur search_box).
+            Does: clears the placeholder text when the user clicks into the field.
+            Depends on: SEARCH_PLACEHOLDER, SEARCH_TEXT_BRUSH, search_box captured by the closure.
+            Returns: nothing (side effect on search_box).
             """
             if search_box.Text == SEARCH_PLACEHOLDER:
                 search_box.Text = ""
@@ -2513,9 +2513,9 @@ class ReportGeneratorApp(object):
 
         def on_lost_focus(sender, e):
             """
-            Fait : restaure le texte indicatif si le champ est laisse vide.
-            Depend de : SEARCH_PLACEHOLDER, SEARCH_PLACEHOLDER_BRUSH, search_box capture par la fermeture.
-            Retourne : rien (effet de bord sur search_box).
+            Does: restores the placeholder text if the field is left empty.
+            Depends on: SEARCH_PLACEHOLDER, SEARCH_PLACEHOLDER_BRUSH, search_box captured by the closure.
+            Returns: nothing (side effect on search_box).
             """
             if not search_box.Text.strip():
                 search_box.Text = SEARCH_PLACEHOLDER
@@ -2524,19 +2524,19 @@ class ReportGeneratorApp(object):
         search_box.GotFocus += on_got_focus
         search_box.LostFocus += on_lost_focus
 
-    # --- Recherche dans une section ---
+    # --- Search within a section ---
 
     def _wire_search_box(self, search_box, rows, panel):
         """
-        Fait : cable la touche Entree d'un champ de recherche pour declencher la recherche.
-        Depend de : self._perform_search.
-        Retourne : rien (effet de bord : cable search_box.KeyDown).
+        Does: wires the Enter key of a search field to trigger the search.
+        Depends on: self._perform_search.
+        Returns: nothing (side effect: wires search_box.KeyDown).
         """
         def on_key_down(sender, e):
             """
-            Fait : declenche la recherche quand l'utilisateur appuie sur Entree.
-            Depend de : self._perform_search, search_box/rows/panel captures par la fermeture.
-            Retourne : rien (effet de bord : marque e.Handled et lance la recherche).
+            Does: triggers the search when the user presses Enter.
+            Depends on: self._perform_search, search_box/rows/panel captured by the closure.
+            Returns: nothing (side effect: sets e.Handled and launches the search).
             """
             if e.Key == Key.Enter:
                 e.Handled = True
@@ -2545,14 +2545,14 @@ class ReportGeneratorApp(object):
 
     def _perform_search(self, search_box, rows, panel):
         """
-        Fait : cherche et selectionne la prochaine ligne de rows dont le nom contient le texte tape.
-        Depend de : search_box.Text/Tag, rows, panel, SEARCH_HIGHLIGHT_BRUSH, SEARCH_BOX_*_BACKGROUND.
-        Retourne : rien (effet de bord : coche/surligne la ligne trouvee ou colore le champ en rose si aucune).
+        Does: finds and selects the next row in rows whose name contains the typed text.
+        Depends on: search_box.Text/Tag, rows, panel, SEARCH_HIGHLIGHT_BRUSH, SEARCH_BOX_*_BACKGROUND.
+        Returns: nothing (side effect: checks/highlights the found row or colors the field pink if none found).
         """
-        # La ligne trouvee est remontee tout en haut de panel (ordre VISUEL uniquement - "rows"
-        # garde son ordre d'origine, qui reste l'ordre de generation du rapport). Une recherche
-        # relancee avec le meme texte reprend apres la derniere occurrence trouvee (search_box.Tag
-        # stocke (texte, index), base sur l'ordre d'origine de rows, inchange par le deplacement).
+        # The found row is moved to the very top of panel (VISUAL order only - "rows"
+        # keeps its original order, which remains the report generation order). Re-running a
+        # search with the same text resumes after the last found occurrence (search_box.Tag
+        # stores (text, index), based on rows' original order, unaffected by the move).
         text = search_box.Text
         if text == SEARCH_PLACEHOLDER:
             text = ""
@@ -2584,22 +2584,22 @@ class ReportGeneratorApp(object):
         search_box.Tag = (query, -1)
         search_box.Background = SEARCH_BOX_NO_MATCH_BACKGROUND
 
-    # --- Apercu live (onglet "Apercu du rapport") ---
-    # Une carte par THEME (pas par ligne) : chaque tuple (kind, payload) de self._preview_order
-    # est soit ("general", libelle) pour Geometrie/Maillage, soit (nom_de_section, None) pour une
-    # section des qu'AU MOINS UNE de ses lignes est cochee - cette carte unique regroupe alors
-    # tous les elements coches de la section (voir _build_preview_card). L'ordre de cette liste,
-    # modifiable par glisser-deposer, est celui respecte a la generation du rapport (_on_generate).
+    # --- Live preview ("Report preview" tab) ---
+    # One card per THEME (not per row): each (kind, payload) tuple in self._preview_order
+    # is either ("general", label) for Geometry/Mesh, or (section_name, None) for a
+    # section as soon as AT LEAST ONE of its rows is checked - this single card then groups
+    # all the checked items of the section (see _build_preview_card). The order of this list,
+    # editable via drag-and-drop, is the one respected when the report is generated (_on_generate).
 
-    # Sections dont la carte garde le detail complet par element (vue, coupe, steps, ...) ; les
-    # autres sections n'affichent que le nom brut de chaque element selectionne.
+    # Sections whose card keeps the full per-item detail (view, section, steps, ...); the
+    # other sections only display the raw name of each selected item.
     FULL_DETAIL_SECTIONS = ("ContactTool", "ContactToolConnections", "Results", "BoltTool")
 
     def _collect_desired_preview_entries(self):
         """
-        Fait : calcule la liste des entrees (kind, payload) qui devraient apparaitre dans l'apercu.
-        Depend de : self.chk_geometry/chk_mesh, self._section_order, self._sections[...]["rows"], self._multi_result_slides.
-        Retourne : list de tuples (kind, payload), dans un ordre naturel (pas encore l'ordre d'apercu).
+        Does: computes the list of entries (kind, payload) that should appear in the preview.
+        Depends on: self.chk_geometry/chk_mesh, self._section_order, self._sections[...]["rows"], self._multi_result_slides.
+        Returns: list of (kind, payload) tuples, in a natural order (not yet the preview order).
         """
         entries = []
         if self.chk_geometry.IsChecked:
@@ -2609,20 +2609,20 @@ class ReportGeneratorApp(object):
         for name in self._section_order:
             if any(row.checkbox.IsChecked for row in self._sections[name]["rows"]):
                 entries.append((name, None))
-        # Pas de case a cocher pour ces entrees (ajoutees depuis l'onglet "Slide combinee", voir
-        # _on_multi_result_add_to_report) : chacune est toujours "desiree" tant qu'elle n'a pas ete
-        # explicitement supprimee depuis sa carte (voir _on_delete_multi_result_slide).
+        # No checkbox for these entries (added from the "Combined slide" tab, see
+        # _on_multi_result_add_to_report): each one is always "desired" until it has been
+        # explicitly removed from its card (see _on_delete_multi_result_slide).
         for cfg in self._multi_result_slides:
             entries.append(("MultiResultSlide", cfg))
         return entries
 
     def _update_preview(self):
         """
-        Fait : met a jour self._preview_order selon les cases/lignes cochees, sans perdre l'ordre du glisser-deposer.
-        Depend de : self._collect_desired_preview_entries, self._render_preview.
-        Retourne : rien (effet de bord sur self._preview_order et l'affichage de l'apercu).
+        Does: updates self._preview_order based on the checked boxes/rows, without losing the drag-and-drop order.
+        Depends on: self._collect_desired_preview_entries, self._render_preview.
+        Returns: nothing (side effect on self._preview_order and the preview display).
         """
-        # Entrees decochees retirees, nouvelles ajoutees a la fin, le reste garde sa position actuelle.
+        # Unchecked entries removed, new ones added at the end, the rest keeps its current position.
         desired = self._collect_desired_preview_entries()
         desired_set = set(desired)
 
@@ -2637,13 +2637,13 @@ class ReportGeneratorApp(object):
 
     def _build_preview_list_row(self, primary_text, secondary_lines=None):
         """
-        Fait : construit UNE ligne de la liste verticale d'une carte d'apercu (nom + details eventuels).
-        Depend de : _shared_resources["CardBorderBrush"], SEARCH_PLACEHOLDER_BRUSH.
-        Retourne : Border, la ligne prete a etre ajoutee au conteneur de liste (self._build_preview_list_container).
+        Does: builds ONE row of a preview card's vertical list (name + any details).
+        Depends on: _shared_resources["CardBorderBrush"], SEARCH_PLACEHOLDER_BRUSH.
+        Returns: Border, the row ready to be added to the list container (self._build_preview_list_container).
         """
-        # Utilisee de maniere identique pour TOUTES les categories : une ligne par parametre/element,
-        # au lieu d'un bloc de texte partage illisible des que plusieurs elements ont chacun
-        # plusieurs parametres (vue, coupe, steps, ...).
+        # Used identically for ALL categories: one row per parameter/item,
+        # instead of a shared text block that becomes unreadable as soon as several items each
+        # have several parameters (view, section, steps, ...).
         inner = StackPanel()
 
         primary_block = TextBlock()
@@ -2670,16 +2670,16 @@ class ReportGeneratorApp(object):
 
     def _build_preview_list_container(self, rows):
         """
-        Fait : construit le conteneur de liste verticale d'une carte d'apercu (fond legerement gris,
-        colle directement sous le bandeau titre) : hauteur FIXE (PREVIEW_LIST_DEFAULT_HEIGHT, memeS
-        pour toutes les cartes) et defilable, avec un fondu en bas (PREVIEW_LIST_FADE_HEIGHT) visible
-        UNIQUEMENT si la liste deborde reellement de la hauteur visible (verifie apres layout, voir on_list_loaded).
-        Depend de : PREVIEW_LIST_DEFAULT_HEIGHT/FADE_HEIGHT/BACKGROUND(_COLOR), rows deja construites par self._build_preview_list_row.
-        Retourne : Grid, le conteneur (liste defilable + fondu superpose) pret a etre ajoute a la carte.
+        Does: builds the vertical list container of a preview card (slightly grey background,
+        sitting directly under the title bar): FIXED height (PREVIEW_LIST_DEFAULT_HEIGHT, the same
+        for all cards) and scrollable, with a fade at the bottom (PREVIEW_LIST_FADE_HEIGHT) visible
+        ONLY if the list actually overflows the visible height (checked after layout, see on_list_loaded).
+        Depends on: PREVIEW_LIST_DEFAULT_HEIGHT/FADE_HEIGHT/BACKGROUND(_COLOR), rows already built by self._build_preview_list_row.
+        Returns: Grid, the container (scrollable list + overlaid fade) ready to be added to the card.
         """
         list_panel = StackPanel()
-        # Meme raison que dans _attach_list_fade : sans cet espace, la derniere ligne se retrouve
-        # exactement sous la zone de fondu une fois tout en bas de la liste et devient illisible.
+        # Same reason as in _attach_list_fade: without this space, the last row ends up
+        # exactly under the fade area once fully scrolled to the bottom of the list and becomes unreadable.
         list_panel.Margin = Thickness(0, 0, 0, PREVIEW_LIST_FADE_HEIGHT)
         for row in rows:
             list_panel.Children.Add(row)
@@ -2704,9 +2704,9 @@ class ReportGeneratorApp(object):
         fade.IsHitTestVisible = False
         fade.Visibility = Visibility.Collapsed
 
-        # 3 arrets plutot que 2 (transparent -> oppaque des la moitie du fondu -> oppaque) : le
-        # degrade "tient" son opacite plus tot/plus fort au lieu de s'estomper lineairement sur
-        # toute la hauteur - rendu plus marque, moins delave, qu'un simple degrade lineaire.
+        # 3 stops rather than 2 (transparent -> opaque halfway through the fade -> opaque): the
+        # gradient "holds" its opacity earlier/stronger instead of fading linearly over
+        # the whole height - a more pronounced, less washed-out look than a plain linear gradient.
         fade_brush = LinearGradientBrush()
         fade_brush.StartPoint = Point(0, 0)
         fade_brush.EndPoint = Point(0, 1)
@@ -2721,9 +2721,9 @@ class ReportGeneratorApp(object):
 
         def on_list_loaded(sender, e):
             """
-            Fait : n'affiche le fondu qu'une fois la hauteur reelle du contenu connue (apres layout).
-            Depend de : scroll.ScrollableHeight, fade capture par la fermeture.
-            Retourne : rien (effet de bord sur fade.Visibility).
+            Does: only shows the fade once the content's actual height is known (after layout).
+            Depends on: scroll.ScrollableHeight, fade captured by the closure.
+            Returns: nothing (side effect on fade.Visibility).
             """
             fade.Visibility = Visibility.Visible if scroll.ScrollableHeight > 0 else Visibility.Collapsed
         scroll.Loaded += on_list_loaded
@@ -2733,11 +2733,11 @@ class ReportGeneratorApp(object):
 
     def _build_preview_card_content(self, title, chips, order_number):
         """
-        Fait : construit le contenu d'une carte d'apercu - bandeau titre+badge (fond blanc, herite
-        de la carte), colle directement au-dessus du conteneur de liste verticale des elements
-        selectionnes (self._build_preview_list_container).
-        Depend de : _shared_resources["AccentBrush"], self._build_preview_list_container (via chips deja construits par self._build_preview_list_row).
-        Retourne : tuple (StackPanel contenu, TextBlock badge) - le badge est renvoye a part pour etre renumerote sans reconstruire la carte.
+        Does: builds a preview card's content - title+badge bar (white background, inherited
+        from the card), sitting directly above the vertical list container of selected
+        items (self._build_preview_list_container).
+        Depends on: _shared_resources["AccentBrush"], self._build_preview_list_container (via chips already built by self._build_preview_list_row).
+        Returns: tuple (StackPanel content, TextBlock badge) - the badge is returned separately so it can be renumbered without rebuilding the card.
         """
         content = StackPanel()
 
@@ -2771,21 +2771,21 @@ class ReportGeneratorApp(object):
 
         content.Children.Add(title_row)
 
-        # Toujours ajoute, meme si chips est vide (ex : Geometrie/Maillage sans vue configuree) :
-        # garde une hauteur de carte uniforme dans tous les cas (voir PREVIEW_LIST_DEFAULT_HEIGHT),
-        # plutot qu'une carte anormalement courte des qu'il n'y a rien a lister.
+        # Always added, even if chips is empty (e.g. Geometry/Mesh without a configured view):
+        # keeps a uniform card height in all cases (see PREVIEW_LIST_DEFAULT_HEIGHT),
+        # rather than an abnormally short card whenever there is nothing to list.
         content.Children.Add(self._build_preview_list_container(chips))
 
         return content, badge_text
 
     def _build_preview_card(self, entry, index):
         """
-        Fait : construit une carte d'apercu complete (fond, bordure, ombre) pour une entree de self._preview_order.
-        Depend de : self._sections, self.FULL_DETAIL_SECTIONS, self._geometry_view_config/_mesh_view_config, self._build_preview_card_content, self._begin_potential_drag, build_row_display_name (05_interactive_slides.py, pour MultiResultSlide).
-        Retourne : Border, la carte prete a etre ajoutee a panelPreview.
+        Does: builds a complete preview card (background, border, shadow) for an entry from self._preview_order.
+        Depends on: self._sections, self.FULL_DETAIL_SECTIONS, self._geometry_view_config/_mesh_view_config, self._build_preview_card_content, self._begin_potential_drag, build_row_display_name (05_interactive_slides.py, for MultiResultSlide).
+        Returns: Border, the card ready to be added to panelPreview.
         """
-        # Seule LA CARTE DE CATEGORIE elle-meme est glissable/receptrice (voir _begin_potential_drag) ;
-        # les chips internes ne le sont pas.
+        # Only THE CATEGORY CARD itself is draggable/a drop target (see _begin_potential_drag);
+        # the inner chips are not.
         kind, payload = entry
 
         delete_handler = None
@@ -2802,8 +2802,8 @@ class ReportGeneratorApp(object):
                     chips.append(self._build_preview_list_row("view=" + self._mesh_view_config.view_name))
             content, badge = self._build_preview_card_content(payload, chips, index + 1)
         elif kind == "MultiResultSlide":
-            # Pas de case a cocher pour ce type d'entree (voir _on_multi_result_add_to_report) : la
-            # carte porte elle-meme un bouton "Supprimer" pour la retirer de l'apercu/de la generation.
+            # No checkbox for this entry type (see _on_multi_result_add_to_report): the
+            # card itself carries a "Delete" button to remove it from the preview/generation.
             chips = []
             for cell_cfg in payload.cell_configs:
                 full_text = build_row_display_name(cell_cfg)
@@ -2816,17 +2816,17 @@ class ReportGeneratorApp(object):
             section = self._sections[kind]
             checked_rows = [row for row in section["rows"] if row.checkbox.IsChecked]
             if kind in self.FULL_DETAIL_SECTIONS:
-                # Categories "resultats" : un chip par resultat, avec son detail complet (vue, coupe, steps, ...).
+                # "Result" categories: one chip per result, with its full detail (view, section, steps, ...).
                 chips = []
                 for row in checked_rows:
                     full_text = row.display_name_func(row.row_config)
                     parts = full_text.split(" | ")
                     chips.append(self._build_preview_list_row(parts[0], parts[1:]))
             else:
-                # Categories "contexte" (pieces, BC, BP, contacts, solution info, analyses) : un
-                # chip par nom, sans detail - via display_name_func()[0] (et non obj.Name brut)
-                # pour que le suffixe d'analyse (voir analysis_suffix) apparaisse aussi ici pour
-                # Bolt Pretension / Solution Information sur un projet multi-analyses.
+                # "Context" categories (parts, BC, BP, contacts, solution info, analyses): one
+                # chip per name, no detail - via display_name_func()[0] (not the raw obj.Name)
+                # so the analysis suffix (see analysis_suffix) also shows up here for
+                # Bolt Pretension / Solution Information on a multi-analysis project.
                 chips = [self._build_preview_list_row(row.display_name_func(row.row_config).split(" | ")[0])
                          for row in checked_rows]
             content, badge = self._build_preview_card_content(section["label"], chips, index + 1)
@@ -2839,7 +2839,7 @@ class ReportGeneratorApp(object):
             btn_delete.Margin = Thickness(10, 0, 0, 0)
             btn_delete.VerticalAlignment = VerticalAlignment.Center
             btn_delete.Click += delete_handler
-            content.Children[0].Children.Add(btn_delete)  # content.Children[0] = title_row (StackPanel horizontal, voir _build_preview_card_content)
+            content.Children[0].Children.Add(btn_delete)  # content.Children[0] = title_row (StackPanel horizontal, see _build_preview_card_content)
 
         self._entry_to_badge[entry] = badge
 
@@ -2857,28 +2857,28 @@ class ReportGeneratorApp(object):
 
         def on_mouse_enter(sender, e):
             """
-            Fait : passe la carte en bleu tres clair au survol, sauf pendant un glisser en cours.
-            Depend de : self._drag_active, CARD_HOVER_BACKGROUND, card capture par la fermeture.
-            Retourne : rien (effet de bord sur card.Background).
+            Does: turns the card very light blue on hover, except during an active drag.
+            Depends on: self._drag_active, CARD_HOVER_BACKGROUND, card captured by the closure.
+            Returns: nothing (side effect on card.Background).
             """
             if not self._drag_active:
                 card.Background = CARD_HOVER_BACKGROUND
 
         def on_mouse_leave(sender, e):
             """
-            Fait : restaure le fond normal de la carte quand la souris la quitte.
-            Depend de : CARD_NORMAL_BACKGROUND, card capture par la fermeture.
-            Retourne : rien (effet de bord sur card.Background).
+            Does: restores the card's normal background when the mouse leaves it.
+            Depends on: CARD_NORMAL_BACKGROUND, card captured by the closure.
+            Returns: nothing (side effect on card.Background).
             """
             card.Background = CARD_NORMAL_BACKGROUND
 
         def on_preview_mouse_down(sender, e):
             """
-            Fait : enregistre le point de depart d'un glisser potentiel sur cette carte, sauf si le
-            clic provient d'un bouton imbrique (ex : "Supprimer" d'une slide combinee) - sinon
-            CaptureMouse() sur panelPreview empeche le Click du bouton de se declencher normalement.
-            Depend de : self._begin_potential_drag, self._is_button_descendant, card/entry captures par la fermeture.
-            Retourne : rien (effet de bord : initialise l'etat de glisser).
+            Does: records the starting point of a potential drag on this card, unless the
+            click comes from a nested button (e.g. "Delete" of a combined slide) - otherwise
+            CaptureMouse() on panelPreview would prevent the button's Click from firing normally.
+            Depends on: self._begin_potential_drag, self._is_button_descendant, card/entry captured by the closure.
+            Returns: nothing (side effect: initializes the drag state).
             """
             if self._is_button_descendant(e.OriginalSource):
                 return
@@ -2892,9 +2892,9 @@ class ReportGeneratorApp(object):
 
     def _render_preview(self):
         """
-        Fait : reconstruit entierement les cartes du WrapPanel panelPreview a partir de self._preview_order.
-        Depend de : self._build_preview_card, self._preview_order.
-        Retourne : rien (effet de bord sur self.panel_preview et self._entry_to_card/_entry_to_badge).
+        Does: fully rebuilds the panelPreview WrapPanel's cards from self._preview_order.
+        Depends on: self._build_preview_card, self._preview_order.
+        Returns: nothing (side effect on self.panel_preview and self._entry_to_card/_entry_to_badge).
         """
         self.panel_preview.Children.Clear()
         self._entry_to_card = {}
@@ -2912,18 +2912,18 @@ class ReportGeneratorApp(object):
             placeholder.Margin = Thickness(6)
             self.panel_preview.Children.Add(placeholder)
 
-    # --- Glisser-deposer des cartes d'apercu ---
-    # La souris est capturee par panelPreview (pas par la carte elle-meme) : ainsi, reordonner
-    # les enfants du WrapPanel pendant le glisser ne fait jamais perdre la capture, meme si la
-    # carte source est brievement retiree/reinseree. Un Popup sans decoration ("fantome", copie
-    # visuelle via VisualBrush) suit la souris ; les autres cartes se decalent en direct des que
-    # le curseur survole une autre carte.
+    # --- Preview card drag-and-drop ---
+    # The mouse is captured by panelPreview (not by the card itself): that way, reordering
+    # the WrapPanel's children during the drag never loses the capture, even if the
+    # source card is briefly removed/reinserted. An undecorated Popup ("ghost", a visual
+    # copy via VisualBrush) follows the mouse; the other cards shift live as soon as
+    # the cursor hovers over another card.
 
     def _begin_potential_drag(self, card, entry, e):
         """
-        Fait : enregistre le point de depart d'un glisser potentiel et capture la souris sur panelPreview.
-        Depend de : self.panel_preview.CaptureMouse().
-        Retourne : rien (effet de bord : initialise self._drag_pending_card/_drag_pending_entry/_drag_start_point).
+        Does: records the starting point of a potential drag and captures the mouse on panelPreview.
+        Depends on: self.panel_preview.CaptureMouse().
+        Returns: nothing (side effect: initializes self._drag_pending_card/_drag_pending_entry/_drag_start_point).
         """
         self._drag_pending_card = card
         self._drag_pending_entry = entry
@@ -2932,9 +2932,9 @@ class ReportGeneratorApp(object):
 
     def _on_preview_panel_mouse_move(self, sender, e):
         """
-        Fait : demarre le glisser au-dela d'un seuil de mouvement, puis fait suivre le fantome et reordonne au survol.
-        Depend de : self._drag_pending_card/_drag_pending_entry/_drag_start_point, self._start_drag/_update_drag_ghost_position/_update_drag_hover.
-        Retourne : rien (effet de bord : declenche le glisser ou met a jour sa position).
+        Does: starts the drag once past a movement threshold, then makes the ghost follow and reorders on hover.
+        Depends on: self._drag_pending_card/_drag_pending_entry/_drag_start_point, self._start_drag/_update_drag_ghost_position/_update_drag_hover.
+        Returns: nothing (side effect: triggers the drag or updates its position).
         """
         if e.LeftButton != MouseButtonState.Pressed or self._drag_pending_entry is None:
             return
@@ -2953,9 +2953,9 @@ class ReportGeneratorApp(object):
 
     def _on_preview_panel_mouse_up(self, sender, e):
         """
-        Fait : relache la capture souris et termine proprement le glisser en cours (s'il y en a un).
-        Depend de : self.panel_preview.ReleaseMouseCapture(), self._drag_active, self._end_drag.
-        Retourne : rien (effet de bord : remet a zero l'etat de glisser en attente).
+        Does: releases the mouse capture and cleanly ends the current drag (if any).
+        Depends on: self.panel_preview.ReleaseMouseCapture(), self._drag_active, self._end_drag.
+        Returns: nothing (side effect: resets the pending drag state).
         """
         self.panel_preview.ReleaseMouseCapture()
         if self._drag_active:
@@ -2966,9 +2966,9 @@ class ReportGeneratorApp(object):
 
     def _start_drag(self, card, entry):
         """
-        Fait : demarre effectivement le glisser (estompe la carte source, ouvre le Popup fantome).
-        Depend de : Border/VisualBrush/Popup (WPF), card.ActualWidth/ActualHeight.
-        Retourne : rien (effet de bord : initialise self._drag_active/_drag_entry/_drag_source_card/_drag_popup).
+        Does: actually starts the drag (fades the source card, opens the ghost Popup).
+        Depends on: Border/VisualBrush/Popup (WPF), card.ActualWidth/ActualHeight.
+        Returns: nothing (side effect: initializes self._drag_active/_drag_entry/_drag_source_card/_drag_popup).
         """
         self._drag_active = True
         self._drag_entry = entry
@@ -2992,9 +2992,9 @@ class ReportGeneratorApp(object):
 
     def _update_drag_ghost_position(self, e):
         """
-        Fait : deplace le Popup fantome pour qu'il reste centre sur le curseur.
-        Depend de : self._drag_popup, self._drag_source_card, self.panel_preview.PointToScreen.
-        Retourne : rien (effet de bord sur self._drag_popup.HorizontalOffset/VerticalOffset).
+        Does: moves the ghost Popup so it stays centered on the cursor.
+        Depends on: self._drag_popup, self._drag_source_card, self.panel_preview.PointToScreen.
+        Returns: nothing (side effect on self._drag_popup.HorizontalOffset/VerticalOffset).
         """
         screen_point = self.panel_preview.PointToScreen(e.GetPosition(self.panel_preview))
         card = self._drag_source_card
@@ -3003,10 +3003,10 @@ class ReportGeneratorApp(object):
 
     def _is_button_descendant(self, element):
         """
-        Fait : determine si element est un Button ou est contenu dans un Button (ex : le TextBlock
-        auto-genere pour Content="Supprimer"), en remontant l'arbre visuel.
-        Depend de : VisualTreeHelper.GetParent (WPF).
-        Retourne : bool, True des qu'un Button est trouve sur le chemin.
+        Does: determines whether element is a Button or is contained in a Button (e.g. the
+        auto-generated TextBlock for Content="Delete"), by walking up the visual tree.
+        Depends on: VisualTreeHelper.GetParent (WPF).
+        Returns: bool, True as soon as a Button is found on the path.
         """
         node = element
         while node is not None:
@@ -3017,9 +3017,9 @@ class ReportGeneratorApp(object):
 
     def _find_ancestor_card(self, element):
         """
-        Fait : remonte l'arbre visuel depuis un resultat de hit-test jusqu'a la Border d'une carte.
-        Depend de : VisualTreeHelper.GetParent (WPF), la convention Tag = entry sur les cartes (voir _build_preview_card).
-        Retourne : Border ou None, la carte trouvee (Tag non None) ou None si aucune sur le chemin.
+        Does: walks up the visual tree from a hit-test result to a card's Border.
+        Depends on: VisualTreeHelper.GetParent (WPF), the Tag = entry convention on cards (see _build_preview_card).
+        Returns: Border or None, the found card (non-None Tag) or None if there isn't one on the path.
         """
         node = element
         while node is not None:
@@ -3030,9 +3030,9 @@ class ReportGeneratorApp(object):
 
     def _update_drag_hover(self, position):
         """
-        Fait : deplace l'entree glissee dans self._preview_order si le curseur survole une AUTRE carte.
-        Depend de : self._find_ancestor_card, self._preview_order, self._reorder_children_to_match_preview_order.
-        Retourne : rien (effet de bord sur self._preview_order et l'affichage si un deplacement a lieu).
+        Does: moves the dragged entry within self._preview_order if the cursor hovers over ANOTHER card.
+        Depends on: self._find_ancestor_card, self._preview_order, self._reorder_children_to_match_preview_order.
+        Returns: nothing (side effect on self._preview_order and the display if a move happens).
         """
         hit = self.panel_preview.InputHitTest(position)
         target_card = self._find_ancestor_card(hit) if hit else None
@@ -3054,14 +3054,14 @@ class ReportGeneratorApp(object):
 
     def _reorder_children_to_match_preview_order(self):
         """
-        Fait : reordonne panelPreview.Children pour refleter self._preview_order sans recreer les cartes.
-        Depend de : self._entry_to_card/_entry_to_badge, self._preview_order.
-        Retourne : rien (effet de bord sur panelPreview.Children et les badges numerotes).
+        Does: reorders panelPreview.Children to reflect self._preview_order without recreating the cards.
+        Depends on: self._entry_to_card/_entry_to_badge, self._preview_order.
+        Returns: nothing (side effect on panelPreview.Children and the numbered badges).
         """
-        # Contrairement a _render_preview, ne recree pas les cartes : essentiel pendant un glisser
-        # en cours, pour ne pas perdre les gestionnaires d'evenements ni la capture souris (capturee
-        # sur le panel, pas sur la carte). Renumerote aussi les badges pour qu'ils restent justes
-        # pendant le glisser, pas seulement une fois relache.
+        # Unlike _render_preview, does not recreate the cards: essential during an active
+        # drag, to avoid losing the event handlers or the mouse capture (captured
+        # on the panel, not on the card). Also renumbers the badges so they stay correct
+        # during the drag, not just once released.
         children = self.panel_preview.Children
         for target_index, entry in enumerate(self._preview_order):
             card = self._entry_to_card.get(entry)
@@ -3078,9 +3078,9 @@ class ReportGeneratorApp(object):
 
     def _end_drag(self):
         """
-        Fait : termine le glisser en cours (ferme le fantome, restaure l'opacite de la carte source).
-        Depend de : self._drag_popup, self._drag_source_card.
-        Retourne : rien (effet de bord : remet a zero l'etat de glisser).
+        Does: ends the current drag (closes the ghost, restores the source card's opacity).
+        Depends on: self._drag_popup, self._drag_source_card.
+        Returns: nothing (side effect: resets the drag state).
         """
         self._drag_active = False
         if self._drag_popup is not None:
@@ -3093,27 +3093,27 @@ class ReportGeneratorApp(object):
 
     def _get_checked_row_configs(self, name):
         """
-        Fait : recupere les row_config des lignes cochees de la section 'name'.
-        Depend de : self._sections[name]["rows"].
-        Retourne : list de row_config, ceux dont la CheckBox est cochee.
+        Does: retrieves the row_config of checked rows in section 'name'.
+        Depends on: self._sections[name]["rows"].
+        Returns: list of row_config, those whose CheckBox is checked.
         """
         return [row.row_config for row in self._sections[name]["rows"] if row.checkbox.IsChecked]
 
-    # --- Handlers de cases a cocher simples ---
+    # --- Simple checkbox handlers ---
 
     def _on_simple_toggle(self, sender, e):
         """
-        Fait : rafraichit l'apercu quand une case simple (Geometrie/Maillage) change d'etat.
-        Depend de : self._update_preview.
-        Retourne : rien (effet de bord sur l'apercu).
+        Does: refreshes the preview when a simple checkbox (Geometry/Mesh) changes state.
+        Depends on: self._update_preview.
+        Returns: nothing (side effect on the preview).
         """
         self._update_preview()
 
     def _on_geometry_view_click(self, sender, e):
         """
-        Fait : ouvre le panneau lateral global de selection de vue pour la slide Geometrie (bouton "Parametres" de la carte).
-        Depend de : self._open_config_panel, self._geometry_view_config, self._refresh_general_slide_status, self._update_preview.
-        Retourne : rien (effet de bord : affiche borderConfigPanel ; met a jour self._geometry_view_config.view_name, le statut de la carte et l'apercu si "Appliquer").
+        Does: opens the global side panel for view selection for the Geometry slide (card's "Settings" button).
+        Depends on: self._open_config_panel, self._geometry_view_config, self._refresh_general_slide_status, self._update_preview.
+        Returns: nothing (side effect: shows borderConfigPanel; updates self._geometry_view_config.view_name, the card status and the preview on "Apply").
         """
         def refresh():
             self._refresh_general_slide_status()
@@ -3122,22 +3122,22 @@ class ReportGeneratorApp(object):
 
     def _on_mesh_view_click(self, sender, e):
         """
-        Fait : ouvre le panneau lateral global de selection de vue pour la slide Maillage (bouton "Parametres" de la carte).
-        Depend de : self._open_config_panel, self._mesh_view_config, self._refresh_general_slide_status, self._update_preview.
-        Retourne : rien (effet de bord : affiche borderConfigPanel ; met a jour self._mesh_view_config.view_name, le statut de la carte et l'apercu si "Appliquer").
+        Does: opens the global side panel for view selection for the Mesh slide (card's "Settings" button).
+        Depends on: self._open_config_panel, self._mesh_view_config, self._refresh_general_slide_status, self._update_preview.
+        Returns: nothing (side effect: shows borderConfigPanel; updates self._mesh_view_config.view_name, the card status and the preview on "Apply").
         """
         def refresh():
             self._refresh_general_slide_status()
             self._update_preview()
         self._open_config_panel("mesh_part", self._mesh_view_config, refresh)
 
-    # --- Tout (de)selectionner, par onglet ---
+    # --- Select/deselect all, per tab ---
 
     def _set_group_checked(self, group_key, checked):
         """
-        Fait : (de)coche toutes les lignes de toutes les sections d'un onglet (group_key).
-        Depend de : self._section_order, self._sections, self._update_preview.
-        Retourne : rien (effet de bord sur les CheckBox des sections concernees et sur l'apercu).
+        Does: (un)checks every row of every section in a tab (group_key).
+        Depends on: self._section_order, self._sections, self._update_preview.
+        Returns: nothing (side effect on the CheckBoxes of the affected sections and on the preview).
         """
         for name in self._section_order:
             section = self._sections[name]
@@ -3149,9 +3149,9 @@ class ReportGeneratorApp(object):
 
     def _set_section_checked(self, name, checked):
         """
-        Fait : (de)coche toutes les lignes d'UNE SEULE section (une zone de selection precise).
-        Depend de : self._sections[name]["rows"], self._update_preview.
-        Retourne : rien (effet de bord sur les CheckBox de la section et sur l'apercu).
+        Does: (un)checks every row of a SINGLE section (one specific selection zone).
+        Depends on: self._sections[name]["rows"], self._update_preview.
+        Returns: nothing (side effect on the section's CheckBoxes and on the preview).
         """
         for row in self._sections[name]["rows"]:
             row.checkbox.IsChecked = checked
@@ -3159,43 +3159,43 @@ class ReportGeneratorApp(object):
 
     def _make_zone_toggle_handler(self, name, checked):
         """
-        Fait : ferme name/checked par valeur pour produire le handler Click du bouton 'Tout'/'Aucun' d'une zone.
-        Depend de : self._set_section_checked.
-        Retourne : function, le handler(sender, e) a cabler sur le bouton de zone.
+        Does: closes over name/checked to produce the Click handler for a zone's "Select all"/"Deselect all" button.
+        Depends on: self._set_section_checked.
+        Returns: function, the handler(sender, e) to wire to the zone's button.
         """
         def handler(sender, e):
             """
-            Fait : (de)coche toutes les lignes de la zone associee au bouton.
-            Depend de : self._set_section_checked, name/checked captures par la fermeture.
-            Retourne : rien (effet de bord sur les CheckBox de la zone).
+            Does: (un)checks every row of the zone associated with the button.
+            Depends on: self._set_section_checked, name/checked captured by the closure.
+            Returns: nothing (side effect on the zone's CheckBoxes).
             """
             self._set_section_checked(name, checked)
         return handler
 
     def _make_bulk_config_handler(self, name):
         """
-        Fait : ferme name par valeur pour produire le handler Click du bouton "Configurer la
-        selection..." d'une zone.
-        Depend de : self._on_bulk_config_click.
-        Retourne : function, le handler(sender, e) a cabler sur le bouton de zone.
+        Does: closes over name to produce the Click handler for a zone's "Configure
+        selection..." button.
+        Depends on: self._on_bulk_config_click.
+        Returns: function, the handler(sender, e) to wire to the zone's button.
         """
         def handler(sender, e):
             """
-            Fait : ouvre le panneau de configuration groupee pour les lignes cochees de la zone associee.
-            Depend de : self._on_bulk_config_click, name capture par la fermeture.
-            Retourne : rien (effet de bord : peut ouvrir borderConfigPanel).
+            Does: opens the bulk configuration panel for the checked rows of the associated zone.
+            Depends on: self._on_bulk_config_click, name captured by the closure.
+            Returns: nothing (side effect: may open borderConfigPanel).
             """
             self._on_bulk_config_click(name)
         return handler
 
     def _on_bulk_config_click(self, name):
         """
-        Fait : ouvre le panneau lateral global en mode groupe (bulk) pour toutes les lignes cochees
-        de la zone `name`. Ne fait rien si la zone n'a pas de panneau de configuration (Contacts) ou
-        si aucune ligne n'est cochee - avertit l'utilisateur dans ce dernier cas plutot que d'ouvrir
-        un panneau vide.
-        Depend de : self._sections, self._open_config_panel.
-        Retourne : rien (effet de bord : peut afficher une MessageBox ou ouvrir borderConfigPanel).
+        Does: opens the global side panel in bulk (group) mode for every checked row of
+        zone `name`. Does nothing if the zone has no configuration panel (Contacts) or
+        if no row is checked - warns the user in that last case instead of opening
+        an empty panel.
+        Depends on: self._sections, self._open_config_panel.
+        Returns: nothing (side effect: may show a MessageBox or open borderConfigPanel).
         """
         section = self._sections[name]
         panel_kind = section["panel_kind"]
@@ -3209,23 +3209,23 @@ class ReportGeneratorApp(object):
                 "No line selected", MessageBoxButton.OK, MessageBoxImage.Information)
             return
 
-        # bulk_rows non-None est ce qui bascule _open_config_panel/_on_config_panel_apply en mode
-        # groupe (voir ces methodes) : row_config du template (premiere ligne cochee) sert
-        # uniquement a peupler les valeurs initiales affichees, jamais reecrit lui-meme au clic sur
-        # "Appliquer" (chaque ligne cochee recoit sa propre copie des valeurs choisies).
+        # A non-None bulk_rows is what switches _open_config_panel/_on_config_panel_apply into
+        # group mode (see those methods): the template row_config (first checked row) only
+        # serves to populate the initially displayed values, and is never itself written back on
+        # "Apply" (each checked row receives its own copy of the chosen values).
         self._open_config_panel(panel_kind, checked_rows[0].row_config, None, bulk_rows=checked_rows)
 
     def _wire_zone_select_buttons(self):
         """
-        Fait : cable les boutons "Tout"/"Aucun"/"Configurer la selection" de chaque zone de
-        selection (en-tete de carte XAML).
-        Depend de : self._section_order, self.window.FindName, self._make_zone_toggle_handler,
+        Does: wires the "Select all"/"Deselect all"/"Configure selection" buttons of each
+        selection zone (XAML card header).
+        Depends on: self._section_order, self.window.FindName, self._make_zone_toggle_handler,
             self._make_bulk_config_handler.
-        Retourne : rien (effet de bord : cable les Click des boutons btnZoneCheck{name}/
-            btnZoneUncheck{name}/btnZoneConfig{name}).
+        Returns: nothing (side effect: wires the Click of the btnZoneCheck{name}/
+            btnZoneUncheck{name}/btnZoneConfig{name} buttons).
         """
-        # Raccourci par zone, en plus des boutons "Tout (de)selectionner" existants qui agissent
-        # sur tout un onglet a la fois (voir _set_group_checked).
+        # Per-zone shortcut, in addition to the existing "Select all"/"Deselect all" buttons that
+        # act on a whole tab at once (see _set_group_checked).
         for name in self._section_order:
             check_btn = self.window.FindName("btnZoneCheck" + name)
             uncheck_btn = self.window.FindName("btnZoneUncheck" + name)
@@ -3234,16 +3234,16 @@ class ReportGeneratorApp(object):
                 check_btn.Click += self._make_zone_toggle_handler(name, True)
             if uncheck_btn is not None:
                 uncheck_btn.Click += self._make_zone_toggle_handler(name, False)
-            # Absent pour les zones sans panneau de configuration (Contacts : simple case a
-            # cocher, rien a configurer - voir section_defs dans _build_sections).
+            # Absent for zones without a configuration panel (Contacts: simple checkbox,
+            # nothing to configure - see section_defs in _build_sections).
             if config_btn is not None:
                 config_btn.Click += self._make_bulk_config_handler(name)
 
     def _on_check_all_general(self, sender, e):
         """
-        Fait : coche toutes les lignes de l'onglet "Slides generales" (y compris Geometrie/Maillage).
-        Depend de : self.chk_geometry/chk_mesh, self._set_group_checked.
-        Retourne : rien (effet de bord sur les CheckBox de l'onglet).
+        Does: checks every row of the "General slides" tab (including Geometry/Mesh).
+        Depends on: self.chk_geometry/chk_mesh, self._set_group_checked.
+        Returns: nothing (side effect on the tab's CheckBoxes).
         """
         self.chk_geometry.IsChecked = True
         self.chk_mesh.IsChecked = True
@@ -3251,9 +3251,9 @@ class ReportGeneratorApp(object):
 
     def _on_uncheck_all_general(self, sender, e):
         """
-        Fait : decoche toutes les lignes de l'onglet "Slides generales" (y compris Geometrie/Maillage).
-        Depend de : self.chk_geometry/chk_mesh, self._set_group_checked.
-        Retourne : rien (effet de bord sur les CheckBox de l'onglet).
+        Does: unchecks every row of the "General slides" tab (including Geometry/Mesh).
+        Depends on: self.chk_geometry/chk_mesh, self._set_group_checked.
+        Returns: nothing (side effect on the tab's CheckBoxes).
         """
         self.chk_geometry.IsChecked = False
         self.chk_mesh.IsChecked = False
@@ -3261,43 +3261,43 @@ class ReportGeneratorApp(object):
 
     def _on_check_all_conditions(self, sender, e):
         """
-        Fait : coche toutes les lignes de l'onglet "Conditions et contacts".
-        Depend de : self._set_group_checked.
-        Retourne : rien (effet de bord sur les CheckBox de l'onglet).
+        Does: checks every row of the "Conditions and contacts" tab.
+        Depends on: self._set_group_checked.
+        Returns: nothing (side effect on the tab's CheckBoxes).
         """
         self._set_group_checked("conditions", True)
 
     def _on_uncheck_all_conditions(self, sender, e):
         """
-        Fait : decoche toutes les lignes de l'onglet "Conditions et contacts".
-        Depend de : self._set_group_checked.
-        Retourne : rien (effet de bord sur les CheckBox de l'onglet).
+        Does: unchecks every row of the "Conditions and contacts" tab.
+        Depends on: self._set_group_checked.
+        Returns: nothing (side effect on the tab's CheckBoxes).
         """
         self._set_group_checked("conditions", False)
 
     def _on_check_all_results(self, sender, e):
         """
-        Fait : coche toutes les lignes de l'onglet "Categories de resultats".
-        Depend de : self._set_group_checked.
-        Retourne : rien (effet de bord sur les CheckBox de l'onglet).
+        Does: checks every row of the "Result categories" tab.
+        Depends on: self._set_group_checked.
+        Returns: nothing (side effect on the tab's CheckBoxes).
         """
         self._set_group_checked("results", True)
 
     def _on_uncheck_all_results(self, sender, e):
         """
-        Fait : decoche toutes les lignes de l'onglet "Categories de resultats".
-        Depend de : self._set_group_checked.
-        Retourne : rien (effet de bord sur les CheckBox de l'onglet).
+        Does: unchecks every row of the "Result categories" tab.
+        Depends on: self._set_group_checked.
+        Returns: nothing (side effect on the tab's CheckBoxes).
         """
         self._set_group_checked("results", False)
 
-    # --- Utilitaires : suppression des figures / creation des vues de base ---
+    # --- Utilities: figure deletion / basic view creation ---
 
     def _on_delete_figures(self, sender, e):
         """
-        Fait : supprime les figures obsoletes generees par les exports precedents (bouton dedie).
-        Depend de : remove_stale_figures (05_interactive_slides.py).
-        Retourne : rien (effet de bord : supprime des fichiers, affiche une MessageBox si echec).
+        Does: deletes stale figures generated by previous exports (dedicated button).
+        Depends on: remove_stale_figures (05_interactive_slides.py).
+        Returns: nothing (side effect: deletes files, shows a MessageBox on failure).
         """
         try:
             remove_stale_figures()
@@ -3309,9 +3309,9 @@ class ReportGeneratorApp(object):
 
     def _on_reset_legends(self, sender, e):
         """
-        Fait : reinitialise les legendes de resultats appliquees dans Mechanical (bouton dedie).
-        Depend de : reset_legend (05_interactive_slides.py).
-        Retourne : rien (effet de bord : modifie l'etat des legendes, affiche une MessageBox si echec).
+        Does: resets the result legends applied in Mechanical (dedicated button).
+        Depends on: reset_legend (05_interactive_slides.py).
+        Returns: nothing (side effect: changes the legends' state, shows a MessageBox on failure).
         """
         try:
             reset_legend()
@@ -3323,9 +3323,9 @@ class ReportGeneratorApp(object):
 
     def _on_create_basic_views(self, sender, e):
         """
-        Fait : cree les vues de base dans le View Manager et rafraichit les listes de vues/coupes.
-        Depend de : create_basic_views/collect_views/collect_section_planes/section_plane_label (05_interactive_slides.py).
-        Retourne : rien (effet de bord : cree des vues Mechanical, met a jour self._views/_section_planes/_section_plane_labels).
+        Does: creates the basic views in the View Manager and refreshes the view/section lists.
+        Depends on: create_basic_views/collect_views/collect_section_planes/section_plane_label (05_interactive_slides.py).
+        Returns: nothing (side effect: creates Mechanical views, updates self._views/_section_planes/_section_plane_labels).
         """
         try:
             created = create_basic_views()
@@ -3345,9 +3345,9 @@ class ReportGeneratorApp(object):
 
     def _on_export_3d(self, sender, e):
         """
-        Fait : exporte en .avz la vue 3D de tous les resultats et Contact/Bolt Tool (branche Solution) du projet.
-        Depend de : export_all_3d_views, EXPORT_3D_FOLDER (00_constants.py), _print_console_banner.
-        Retourne : rien (effet de bord : cree des fichiers .avz dans EXPORT_3D_FOLDER, affiche une MessageBox si echec).
+        Does: exports the 3D view of every result and Contact/Bolt Tool (Solution branch) of the project to .avz.
+        Depends on: export_all_3d_views, EXPORT_3D_FOLDER (00_constants.py), _print_console_banner.
+        Returns: nothing (side effect: creates .avz files in EXPORT_3D_FOLDER, shows a MessageBox on failure).
         """
         try:
             _print_console_banner("3D EXPORT (.avz) IN PROGRESS...")
@@ -3365,9 +3365,9 @@ class ReportGeneratorApp(object):
 
     def _make_multi_result_delete_handler(self, cfg):
         """
-        Fait : ferme cfg par valeur pour produire le handler du bouton "Supprimer" d'une carte MultiResultSlide.
-        Depend de : self._on_delete_multi_result_slide.
-        Retourne : function, le handler(sender, e) a cabler sur btn_delete.Click.
+        Does: closes over cfg to produce the handler for a MultiResultSlide card's "Delete" button.
+        Depends on: self._on_delete_multi_result_slide.
+        Returns: function, the handler(sender, e) to wire to btn_delete.Click.
         """
         def handler(sender, e):
             self._on_delete_multi_result_slide(cfg)
@@ -3375,9 +3375,9 @@ class ReportGeneratorApp(object):
 
     def _on_delete_multi_result_slide(self, cfg):
         """
-        Fait : retire une slide combinee "differents resultats" de l'apercu et de la generation.
-        Depend de : self._multi_result_slides, self._update_preview.
-        Retourne : rien (effet de bord sur self._multi_result_slides et l'apercu).
+        Does: removes a "different results" combined slide from the preview and the generation.
+        Depends on: self._multi_result_slides, self._update_preview.
+        Returns: nothing (side effect on self._multi_result_slides and the preview).
         """
         if cfg in self._multi_result_slides:
             self._multi_result_slides.remove(cfg)
@@ -3385,27 +3385,27 @@ class ReportGeneratorApp(object):
 
     def _on_close(self, sender, e):
         """
-        Fait : ferme la fenetre principale de l'application (bouton Fermer).
-        Depend de : self.window.
-        Retourne : rien (effet de bord : ferme self.window).
+        Does: closes the application's main window (Close button).
+        Depends on: self.window.
+        Returns: nothing (side effect: closes self.window).
         """
         self.window.Close()
 
-    # --- Generation du rapport ---
+    # --- Report generation ---
 
     def _on_generate(self, sender, e):
         """
-        Fait : genere le rapport PowerPoint en respectant l'ordre de self._preview_order.
-        Depend de : PPTReportBuilder, build_*_slides/create_*_slide (04_slides.py/05_interactive_slides.py), apply_view_if_exists/self._geometry_view_config/_mesh_view_config, self._update_generation_progress.
-        Retourne : rien (effet de bord : cree le fichier PPTX, met a jour l'UI de statut, affiche une MessageBox si echec).
+        Does: generates the PowerPoint report following the order of self._preview_order.
+        Depends on: PPTReportBuilder, build_*_slides/create_*_slide (04_slides.py/05_interactive_slides.py), apply_view_if_exists/self._geometry_view_config/_mesh_view_config, self._update_generation_progress.
+        Returns: nothing (side effect: creates the PPTX file, updates the status UI, shows a MessageBox on failure).
         """
-        # Chaque carte est traitee une a une, dans l'ordre : une carte "general" ajoute sa slide
-        # unique, une carte de section ajoute TOUTES les slides de sa categorie d'un coup (fonction
-        # par lot de 05_interactive_slides.py). La granularite de reordonnancement (et de la barre
-        # de progression) est donc la carte/categorie, pas la slide individuelle.
-        # PowerPoint est visible pendant toute cette methode (voir PPTReportBuilder.__init__ - le
-        # garder invisible s'est revele instable sur un rapport avec beaucoup de slides) ; la
-        # fenetre WPF reste reactive grace a SWF.Application.DoEvents() (_update_generation_progress).
+        # Each card is processed one at a time, in order: a "general" card adds its single
+        # slide, a section card adds ALL the slides of its category at once (a batch
+        # function from 05_interactive_slides.py). So the reordering granularity (and the
+        # progress bar) is the card/category, not the individual slide.
+        # PowerPoint stays visible throughout this method (see PPTReportBuilder.__init__ - keeping
+        # it invisible turned out to be unstable on a report with many slides); the
+        # WPF window stays responsive thanks to SWF.Application.DoEvents() (_update_generation_progress).
         if not self._preview_order:
             MessageBox.Show("No slide selected: check at least one option before generating the report.",
                              "Nothing to generate", MessageBoxButton.OK, MessageBoxImage.Warning)
@@ -3503,13 +3503,13 @@ class ReportGeneratorApp(object):
             MessageBox.Show("Error during report generation:\n" + str(ex),
                              "Error", MessageBoxButton.OK, MessageBoxImage.Error)
 
-    # --- Branchement des evenements ---
+    # --- Event wiring ---
 
     def _wire_events(self):
         """
-        Fait : cable tous les evenements de la fenetre principale (boutons, cases, glisser-depose).
-        Depend de : tous les controles trouves par self._find_controls, les handlers self._on_*.
-        Retourne : rien (effet de bord : abonne les handlers aux evenements WPF).
+        Does: wires every event of the main window (buttons, checkboxes, drag-and-drop).
+        Depends on: every control found by self._find_controls, the self._on_* handlers.
+        Returns: nothing (side effect: subscribes the handlers to the WPF events).
         """
         self.btn_delete_figures.Click += self._on_delete_figures
         self.btn_reset_legends.Click += self._on_reset_legends
@@ -3517,8 +3517,8 @@ class ReportGeneratorApp(object):
         self.btn_export_3d.Click += self._on_export_3d
         self.btn_multi_result_add_to_report.Click += self._on_multi_result_add_to_report
 
-        # La souris est capturee sur panelPreview (pas sur chaque carte) pendant un glisser-depose :
-        # ces deux gestionnaires doivent donc vivre ici, une seule fois (voir _begin_potential_drag).
+        # The mouse is captured on panelPreview (not on each card) during a drag-and-drop:
+        # these two handlers must therefore live here, only once (see _begin_potential_drag).
         self.panel_preview.MouseMove += self._on_preview_panel_mouse_move
         self.panel_preview.PreviewMouseLeftButtonUp += self._on_preview_panel_mouse_up
 
@@ -3543,7 +3543,7 @@ class ReportGeneratorApp(object):
         self.btn_report_show_in_folder.Click += self._on_show_report_in_folder
 
 
-# --- SECTION 8 - Point d'entree ---
+# --- SECTION 8 - Entry point ---
 
 _xaml_path = os.path.join(PROJECT_DIR, "AnsysReportGenerator_WPF.xaml")
 _app = ReportGeneratorApp(_xaml_path)

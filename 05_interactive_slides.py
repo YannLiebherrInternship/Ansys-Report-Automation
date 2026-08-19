@@ -1,25 +1,25 @@
-# 05_interactive_slides.py : logique de support de la selection interactive (AnsysReportGenerator_WPF.py) - classes de configuration par ligne, collecte des vues/coupes/analyses, et constructeurs de slides limites a la selection de l'utilisateur (au lieu de traiter toujours toute une categorie comme 04_slides.py). Depend de 00_constants.py, 01_data_export.py, 02_image_export.py, 03_ppt_utils.py, 04_slides.py (doivent etre executes avant ce fichier).
+# 05_interactive_slides.py: support logic for interactive selection (AnsysReportGenerator_WPF.py) - per-row configuration classes, collection of views/sections/analyses, and slide builders limited to the user's selection (instead of always processing a whole category like 04_slides.py). Depends on 00_constants.py, 01_data_export.py, 02_image_export.py, 03_ppt_utils.py, 04_slides.py (must be executed before this file).
 
 import csv
 
 
 def remove_stale_figures():
     """
-    Fait : supprime les objets Figure residuels d'une precedente generation du rapport.
-    Depend de : DataModel.GetObjectsByType/Remove, Transaction (Ansys.ACT.Mechanical).
-    Retourne : rien (effet de bord : nettoie l'arbre avant une nouvelle generation).
+    Does: removes leftover Figure objects from a previous report generation.
+    Depends on: DataModel.GetObjectsByType/Remove, Transaction (Ansys.ACT.Mechanical).
+    Returns: nothing (side effect: cleans up the tree before a new generation).
     """
     try:
-        # Transaction(True) differe le rafraichissement de l'arbre/viewport jusqu'a la fin de la suppression en masse.
+        # Transaction(True) defers the tree/viewport refresh until the bulk deletion is complete.
         with Transaction(True):
             DataModel.Remove(DataModel.GetObjectsByType(DataModelObjectCategory.Figure))
     except Exception as e:
         print "Unable to delete existing figures: " + str(e)
 
 
-# Colonne 2 (ViewOrientationType) corrigee suite a une verification visuelle dans Mechanical :
-# l'orientation de la piece fait que le resultat reel de chaque enum ne correspond pas a son nom
-# naturel dans l'API .NET - ex: ViewOrientationType.Back est ce qui produit reellement la vue X+.
+# Column 2 (ViewOrientationType) corrected after a visual check in Mechanical:
+# the part's orientation means the actual result of each enum does not match its
+# natural name in the .NET API - e.g. ViewOrientationType.Back is what actually produces the X+ view.
 BASIC_VIEW_ORIENTATIONS = [
     ("X+", "Back"),
     ("X-", "Front"),
@@ -33,16 +33,16 @@ BASIC_VIEW_ORIENTATIONS = [
 
 def create_basic_views():
     """
-    Fait : cree 7 vues de base (X+, X-, Y+, Y-, Z+, Z-, ISO) dans le View Manager.
-    Depend de : Ansys.Mechanical.DataModel.Enums.ViewOrientationType, ExtAPI.Graphics.Camera/ModelViewManager.
-    Retourne : list, les noms des vues effectivement creees.
+    Does: creates 7 basic views (X+, X-, Y+, Y-, Z+, Z-, ISO) in the View Manager.
+    Depends on: Ansys.Mechanical.DataModel.Enums.ViewOrientationType, ExtAPI.Graphics.Camera/ModelViewManager.
+    Returns: list, the names of the views actually created.
     """
     from Ansys.Mechanical.DataModel.Enums import ViewOrientationType
 
     cam = ExtAPI.Graphics.Camera
     mvm = ExtAPI.Graphics.ModelViewManager
 
-    # Transaction(True) differe le rafraichissement d'interface jusqu'a la fin des 7 creations : CreateView() ne depend que de l'etat de la camera, pas d'un rendu deja affiche.
+    # Transaction(True) defers the UI refresh until all 7 views are created: CreateView() only depends on the camera state, not on an already-displayed render.
     created = []
     with Transaction(True):
         for name, orientation_attr in BASIC_VIEW_ORIENTATIONS:
@@ -61,9 +61,9 @@ def create_basic_views():
 
 def export_object_3d_view(obj, directory):
     """
-    Fait : active un objet et exporte sa vue 3D interactive (.avz) via le View Manager.
-    Depend de : obj.Activate, ExtAPI.Graphics.ModelViewManager.Capture3DImage, get_unique_file_path/safe_file_name (00_constants.py).
-    Retourne : str, le chemin du fichier .avz genere, ou None en cas d'erreur.
+    Does: activates an object and exports its interactive 3D view (.avz) via the View Manager.
+    Depends on: obj.Activate, ExtAPI.Graphics.ModelViewManager.Capture3DImage, get_unique_file_path/safe_file_name (00_constants.py).
+    Returns: str, the path of the generated .avz file, or None on error.
     """
     try:
         obj.Activate()
@@ -78,12 +78,12 @@ def export_object_3d_view(obj, directory):
 
 def collect_3d_exportable_objects(analysis):
     """
-    Fait : liste les objets a exporter en 3D pour une analyse (resultats simples + Contact Tool/Bolt Tool de la branche Solution).
-    Depend de : collect_all_results, collect_contact_tool_results, collect_bolt_tool_results.
-    Retourne : list, les objets Mechanical exportables en .avz pour cette analyse.
+    Does: lists the objects to export in 3D for an analysis (simple results + Contact Tool/Bolt Tool from the Solution branch).
+    Depends on: collect_all_results, collect_contact_tool_results, collect_bolt_tool_results.
+    Returns: list, the Mechanical objects exportable to .avz for this analysis.
     """
-    # Contact Tool / Bolt Tool de la branche Connections (definition, sans resultat 3D a proprement
-    # parler) sont volontairement exclus : seuls ceux de la branche Solution ont un sens ici.
+    # Contact Tool / Bolt Tool from the Connections branch (definition, without a proper 3D result)
+    # are intentionally excluded: only those from the Solution branch make sense here.
     objects = list(collect_all_results(analysis))
     objects.extend(collect_contact_tool_results(analysis))
     objects.extend(collect_bolt_tool_results(analysis))
@@ -92,9 +92,9 @@ def collect_3d_exportable_objects(analysis):
 
 def export_all_3d_views(directory):
     """
-    Fait : exporte en .avz la vue 3D de tous les resultats simples et Contact/Bolt Tool (branche Solution) de toutes les analyses du projet.
-    Depend de : ensure_folder_exists (00_constants.py), collect_analyses, collect_3d_exportable_objects, export_object_3d_view.
-    Retourne : int, le nombre de fichiers .avz effectivement exportes.
+    Does: exports to .avz the 3D view of all simple results and Contact/Bolt Tool (Solution branch) of all analyses in the project.
+    Depends on: ensure_folder_exists (00_constants.py), collect_analyses, collect_3d_exportable_objects, export_object_3d_view.
+    Returns: int, the number of .avz files actually exported.
     """
     ensure_folder_exists(directory)
     exported_count = 0
@@ -111,36 +111,36 @@ NO_SECTION_LABEL = "-- No section --"
 
 class SlideRowConfig(object):
     """
-    Configuration d'affichage pour UNE ligne d'une liste de selection (un BC, un resultat, ...) : objet, vue/coupe a appliquer avant capture, steps eventuels.
+    Display configuration for ONE row of a selection list (a BC, a result, ...): object, view/section to apply before capture, optional steps.
     """
 
     def __init__(self, obj, analysis=None):
         """
-        Fait : initialise la configuration d'une ligne (vue/coupe/steps/echelle/legende par defaut).
-        Depend de : rien (affectations simples).
-        Retourne : rien (constructeur).
+        Does: initializes a row's configuration (default view/section/steps/scale/legend).
+        Depends on: nothing (simple assignments).
+        Returns: nothing (constructor).
         """
         self.obj = obj
-        # None si categorie hors multi-analyses (BC, Contacts...) ou projet mono-analyse : aucun suffixe affiche dans ce cas (voir analysis_suffix).
+        # None if the category is outside multi-analysis (BC, Contacts...) or the project is single-analysis: no suffix shown in that case (see analysis_suffix).
         self.analysis = analysis
         self.view_name = None
         self.section_name = None
-        self.selected_steps = None       # None ou liste vide = pas de gestion par step
-        self.step_display_mode = "individual"  # "individual" ou "combined"
-        self.scale_factor = 1.0          # facteur d'echelle de deformation (mode "manual" uniquement, 1.0 = pas de mise a l'echelle)
-        self.deformation_scale_mode = DEFAULT_DEFORMATION_SCALE_MODE  # "manual"/"auto_x1"/"auto_x2", voir DEFORMATION_SCALE_MODE_OPTIONS
-        self.legend_name = None          # nom de legende (voir collect_legend_files), None = legende actuelle/automatique
-        self.contour_view = DEFAULT_CONTOUR_VIEW            # mode d'affichage des couleurs (Isolines/SmoothContours/SolidFill/ContourBands)
-        self.legend_orientation = DEFAULT_LEGEND_ORIENTATION  # orientation de la legende (Vertical/Horizontal)
-        self.scoping_display = DEFAULT_SCOPING_DISPLAY       # affichage du scoping (ScopedBodies/ResultOnly/AllBodies)
-        self.configured = False          # passe a True des que le bouton "..." a ete valide (OK)
+        self.selected_steps = None       # None or empty list = no per-step handling
+        self.step_display_mode = "individual"  # "individual" or "combined"
+        self.scale_factor = 1.0          # deformation scale factor ("manual" mode only, 1.0 = no scaling)
+        self.deformation_scale_mode = DEFAULT_DEFORMATION_SCALE_MODE  # "manual"/"auto_x1"/"auto_x2", see DEFORMATION_SCALE_MODE_OPTIONS
+        self.legend_name = None          # legend name (see collect_legend_files), None = current/automatic legend
+        self.contour_view = DEFAULT_CONTOUR_VIEW            # result color display mode (Isolines/SmoothContours/SolidFill/ContourBands)
+        self.legend_orientation = DEFAULT_LEGEND_ORIENTATION  # legend orientation (Vertical/Horizontal)
+        self.scoping_display = DEFAULT_SCOPING_DISPLAY       # scoping display (ScopedBodies/ResultOnly/AllBodies)
+        self.configured = False          # becomes True once the "..." button has been confirmed (OK)
 
 
 def analysis_suffix(row_config):
     """
-    Fait : construit le suffixe " (Nom Analyse)" a afficher pour differencier un meme resultat entre deux analyses.
-    Depend de : row_config.analysis (voir collect_analyses et les collecteurs *_multi de ce fichier).
-    Retourne : str, le suffixe formate, ou chaine vide si row_config.analysis est None.
+    Does: builds the " (Analysis Name)" suffix shown to differentiate the same result between two analyses.
+    Depends on: row_config.analysis (see collect_analyses and the *_multi collectors in this file).
+    Returns: str, the formatted suffix, or an empty string if row_config.analysis is None.
     """
     if row_config.analysis is not None:
         return " ({})".format(row_config.analysis.Name)
@@ -149,9 +149,9 @@ def analysis_suffix(row_config):
 
 def build_row_display_name(row_config):
     """
-    Fait : construit le texte affiche pour une ligne de selection dans la liste.
-    Depend de : row_config (obj, view_name, section_name, selected_steps, deformation_scale_mode, scale_factor, legend_name, contour_view, legend_orientation, scoping_display), analysis_suffix.
-    Retourne : str, le nom de l'objet suivi des reglages choisis separes par " | ".
+    Does: builds the text shown for a selection row in the list.
+    Depends on: row_config (obj, view_name, section_name, selected_steps, deformation_scale_mode, scale_factor, legend_name, contour_view, legend_orientation, scoping_display), analysis_suffix.
+    Returns: str, the object's name followed by the chosen settings separated by " | ".
     """
     parts = [row_config.obj.Name + analysis_suffix(row_config)]
     if row_config.view_name:
@@ -181,15 +181,15 @@ def build_row_display_name(row_config):
 
 def collect_views():
     """
-    Fait : liste les vues enregistrees dans le View Manager de Mechanical.
-    Depend de : ExtAPI.Graphics.ModelViewManager.ExportModelViews, un export XML temporaire, xml.etree.ElementTree.
-    Retourne : dict {nom (str): index (int)}, vide si aucune vue ou en cas d'erreur.
+    Does: lists the views saved in Mechanical's View Manager.
+    Depends on: ExtAPI.Graphics.ModelViewManager.ExportModelViews, a temporary XML export, xml.etree.ElementTree.
+    Returns: dict {name (str): index (int)}, empty if no views or on error.
     """
     views = {}
     try:
         view_manager = ExtAPI.Graphics.ModelViewManager
         xml_path = os.path.join(CSV_EXPORT_FOLDER, "_model_views_tmp.xml")
-        # Le View Manager ne s'inspecte pas directement via l'API scriptee : on passe par un export XML temporaire.
+        # The View Manager cannot be inspected directly via the scripting API: a temporary XML export is used instead.
         view_manager.ExportModelViews(xml_path)
         tree = ET.parse(xml_path)
         for index, node in enumerate(list(tree.getroot())):
@@ -202,9 +202,9 @@ def collect_views():
 
 def collect_section_planes():
     """
-    Fait : liste les plans de coupe (Section Planes) deja definis dans le modele.
-    Depend de : ExtAPI.Graphics.SectionPlanes.
-    Retourne : list, les objets Section Plane trouves (vide en cas d'erreur).
+    Does: lists the section planes already defined in the model.
+    Depends on: ExtAPI.Graphics.SectionPlanes.
+    Returns: list, the Section Plane objects found (empty on error).
     """
     planes = []
     try:
@@ -218,9 +218,9 @@ def collect_section_planes():
 
 def section_plane_label(section_plane, index):
     """
-    Fait : construit un libelle lisible pour un plan de coupe.
-    Depend de : section_plane.Name.
-    Retourne : str, le nom du plan de coupe, ou un nom genere ("Section Plane N") s'il n'en a pas.
+    Does: builds a readable label for a section plane.
+    Depends on: section_plane.Name.
+    Returns: str, the section plane's name, or a generated name ("Section Plane N") if it has none.
     """
     try:
         if section_plane.Name:
@@ -232,9 +232,9 @@ def section_plane_label(section_plane, index):
 
 def apply_view_if_exists(view_name, views):
     """
-    Fait : applique une vue du View Manager par son nom, si elle existe encore.
-    Depend de : ExtAPI.Graphics.ModelViewManager.ApplyModelView, le dict views (voir collect_views).
-    Retourne : rien (effet de bord : change la vue du viewport, ou ne fait rien si absente).
+    Does: applies a View Manager view by name, if it still exists.
+    Depends on: ExtAPI.Graphics.ModelViewManager.ApplyModelView, the views dict (see collect_views).
+    Returns: nothing (side effect: changes the viewport view, or does nothing if absent).
     """
     if not view_name or view_name not in views:
         return
@@ -246,9 +246,9 @@ def apply_view_if_exists(view_name, views):
 
 def apply_section_plane(section_planes, section_labels, section_name):
     """
-    Fait : active uniquement le plan de coupe designe par section_name, desactive les autres.
-    Depend de : disable_all_section_planes, la correspondance d'index entre section_planes et section_labels.
-    Retourne : rien (effet de bord : change l'etat Active des plans de coupe).
+    Does: activates only the section plane designated by section_name, deactivates the others.
+    Depends on: disable_all_section_planes, the index correspondence between section_planes and section_labels.
+    Returns: nothing (side effect: changes the Active state of the section planes).
     """
     if not section_name:
         disable_all_section_planes(section_planes)
@@ -262,9 +262,9 @@ def apply_section_plane(section_planes, section_labels, section_name):
 
 def disable_all_section_planes(section_planes):
     """
-    Fait : desactive tous les plans de coupe fournis.
-    Depend de : rien (parcourt la liste fournie).
-    Retourne : rien (effet de bord : remet les plans de coupe a l'etat neutre avant/apres capture).
+    Does: deactivates all the given section planes.
+    Depends on: nothing (iterates over the given list).
+    Returns: nothing (side effect: resets the section planes to a neutral state before/after capture).
     """
     for section_plane in section_planes:
         try:
@@ -283,9 +283,9 @@ DEFAULT_DEFORMATION_SCALE_MODE = "manual"
 
 def deformation_scale_mode_label(value):
     """
-    Fait : trouve le libelle affiche pour une valeur de deformation_scale_mode.
-    Depend de : DEFORMATION_SCALE_MODE_OPTIONS.
-    Retourne : str, le libelle correspondant (celui de DEFAULT_DEFORMATION_SCALE_MODE si value est inconnue).
+    Does: finds the label shown for a deformation_scale_mode value.
+    Depends on: DEFORMATION_SCALE_MODE_OPTIONS.
+    Returns: str, the matching label (the one for DEFAULT_DEFORMATION_SCALE_MODE if value is unknown).
     """
     for label, option_value in DEFORMATION_SCALE_MODE_OPTIONS:
         if option_value == value:
@@ -295,9 +295,9 @@ def deformation_scale_mode_label(value):
 
 def deformation_scale_mode_from_label(label):
     """
-    Fait : trouve la valeur de deformation_scale_mode associee a un libelle de DEFORMATION_SCALE_MODE_OPTIONS.
-    Depend de : DEFORMATION_SCALE_MODE_OPTIONS.
-    Retourne : str, la valeur correspondante (DEFAULT_DEFORMATION_SCALE_MODE si le libelle est inconnu).
+    Does: finds the deformation_scale_mode value associated with a label from DEFORMATION_SCALE_MODE_OPTIONS.
+    Depends on: DEFORMATION_SCALE_MODE_OPTIONS.
+    Returns: str, the matching value (DEFAULT_DEFORMATION_SCALE_MODE if the label is unknown).
     """
     for option_label, value in DEFORMATION_SCALE_MODE_OPTIONS:
         if option_label == label:
@@ -307,12 +307,12 @@ def deformation_scale_mode_from_label(label):
 
 def apply_scale_factor(deformation_scale_mode, scale_factor):
     """
-    Fait : force l'echelle de deformation avant capture d'image - soit un facteur manuel
-    (DeformationScaleMultiplier seul, comportement d'origine), soit un des deux presets natifs
-    "Auto Scale" de Mechanical (DeformationScaling force sur Auto + multiplicateur fixe 1 ou 2).
-    Depend de : ExtAPI.Graphics.ViewOptions.ResultPreference.DeformationScaling/DeformationScaleMultiplier,
-        MechanicalEnums.Graphics.DeformationScaling (API Ansys, enum ambiant), ExtAPI.Graphics.Redraw.
-    Retourne : rien (effet de bord : change l'echelle affichee, ou ne fait rien en mode manuel avec scale_factor a 1.0).
+    Does: forces the deformation scale before image capture - either a manual factor
+    (DeformationScaleMultiplier alone, original behavior), or one of Mechanical's two native
+    "Auto Scale" presets (DeformationScaling forced to Auto + fixed multiplier 1 or 2).
+    Depends on: ExtAPI.Graphics.ViewOptions.ResultPreference.DeformationScaling/DeformationScaleMultiplier,
+        MechanicalEnums.Graphics.DeformationScaling (Ansys API, ambient enum), ExtAPI.Graphics.Redraw.
+    Returns: nothing (side effect: changes the displayed scale, or does nothing in manual mode with scale_factor at 1.0).
     """
     try:
         vo = ExtAPI.Graphics.ViewOptions
@@ -333,12 +333,12 @@ def apply_scale_factor(deformation_scale_mode, scale_factor):
 
 def reset_scale_factor():
     """
-    Fait : repasse l'echelle de deformation a l'etat neutre (mode Manuel, multiplicateur 1) apres
-    une capture avec valeur personnalisee - y compris apres un preset "Auto Scale", pour ne pas
-    laisser MechanicalEnums.Graphics.DeformationScaling sur Auto pour la capture suivante.
-    Depend de : ExtAPI.Graphics.ViewOptions.ResultPreference.DeformationScaling/DeformationScaleMultiplier,
-        MechanicalEnums.Graphics.DeformationScaling (API Ansys, enum ambiant), ExtAPI.Graphics.Redraw.
-    Retourne : rien (effet de bord : reinitialise l'echelle de deformation affichee).
+    Does: resets the deformation scale to a neutral state (Manual mode, multiplier 1) after
+    a capture with a custom value - including after an "Auto Scale" preset, so as not to
+    leave MechanicalEnums.Graphics.DeformationScaling on Auto for the next capture.
+    Depends on: ExtAPI.Graphics.ViewOptions.ResultPreference.DeformationScaling/DeformationScaleMultiplier,
+        MechanicalEnums.Graphics.DeformationScaling (Ansys API, ambient enum), ExtAPI.Graphics.Redraw.
+    Returns: nothing (side effect: resets the displayed deformation scale).
     """
     try:
         vo = ExtAPI.Graphics.ViewOptions
@@ -360,9 +360,9 @@ DEFAULT_CONTOUR_VIEW = "ContourBands"
 
 def contour_view_label(value):
     """
-    Fait : trouve le libelle affiche pour une valeur de contour_view.
-    Depend de : CONTOUR_VIEW_OPTIONS.
-    Retourne : str, le libelle correspondant (celui de DEFAULT_CONTOUR_VIEW si value est inconnue).
+    Does: finds the label shown for a contour_view value.
+    Depends on: CONTOUR_VIEW_OPTIONS.
+    Returns: str, the matching label (the one for DEFAULT_CONTOUR_VIEW if value is unknown).
     """
     for label, option_value in CONTOUR_VIEW_OPTIONS:
         if option_value == value:
@@ -372,9 +372,9 @@ def contour_view_label(value):
 
 def contour_view_from_label(label):
     """
-    Fait : trouve la valeur de contour_view associee a un libelle de CONTOUR_VIEW_OPTIONS.
-    Depend de : CONTOUR_VIEW_OPTIONS.
-    Retourne : str, la valeur correspondante (DEFAULT_CONTOUR_VIEW si le libelle est inconnu).
+    Does: finds the contour_view value associated with a label from CONTOUR_VIEW_OPTIONS.
+    Depends on: CONTOUR_VIEW_OPTIONS.
+    Returns: str, the matching value (DEFAULT_CONTOUR_VIEW if the label is unknown).
     """
     for option_label, value in CONTOUR_VIEW_OPTIONS:
         if option_label == label:
@@ -384,21 +384,21 @@ def contour_view_from_label(label):
 
 def apply_contour_view(contour_view):
     """
-    Fait : applique le mode d'affichage des couleurs de resultat (Isolignes/Contours lisses/Remplissage plein/Bandes de contour).
-    Depend de : ExtAPI.Graphics.ViewOptions.ResultPreference.ContourView, ExtAPI.Graphics.Redraw (API Ansys).
-    Retourne : rien (effet de bord sur le viewport, ou ne fait rien si contour_view est vide).
+    Does: applies the result color display mode (Isolines/Smooth Contours/Solid Fill/Contour Bands).
+    Depends on: ExtAPI.Graphics.ViewOptions.ResultPreference.ContourView, ExtAPI.Graphics.Redraw (Ansys API).
+    Returns: nothing (side effect on the viewport, or does nothing if contour_view is empty).
     """
     if not contour_view:
         return
     try:
         vo = ExtAPI.Graphics.ViewOptions
-        # Les membres (Isolines/SmoothContours/SolidFill/ContourBands) sont lus depuis le TYPE de
-        # la valeur courante plutot qu'importes explicitement : c'est un enum .NET ambiant, deja
-        # utilise ainsi ailleurs dans le projet (ex: ModelColoring.ByMaterial).
+        # The members (Isolines/SmoothContours/SolidFill/ContourBands) are read from the TYPE of
+        # the current value rather than imported explicitly: this is an ambient .NET enum, already
+        # used this way elsewhere in the project (e.g. ModelColoring.ByMaterial).
         vo.ResultPreference.ContourView = getattr(vo.ResultPreference.ContourView, contour_view)
-        # Redraw() indispensable : changer cette propriete par script ne rafraichit pas seul le
-        # viewport (meme constat que pour la legende, voir reset_legend) - sans cet appel, l'image
-        # exportee juste apres reste sur l'ancien mode d'affichage.
+        # Redraw() is essential: changing this property via script does not refresh the
+        # viewport on its own (same observation as for the legend, see reset_legend) - without this call, the image
+        # exported right after stays on the old display mode.
         ExtAPI.Graphics.Redraw()
     except Exception as e:
         print "Unable to apply display mode '{}': {}".format(contour_view, str(e))
@@ -406,9 +406,9 @@ def apply_contour_view(contour_view):
 
 def reset_contour_view():
     """
-    Fait : repasse le mode d'affichage des couleurs de resultat a Bandes de contour (etat neutre) apres une capture personnalisee.
-    Depend de : apply_contour_view, DEFAULT_CONTOUR_VIEW.
-    Retourne : rien (effet de bord sur le viewport).
+    Does: resets the result color display mode to Contour Bands (neutral state) after a custom capture.
+    Depends on: apply_contour_view, DEFAULT_CONTOUR_VIEW.
+    Returns: nothing (side effect on the viewport).
     """
     apply_contour_view(DEFAULT_CONTOUR_VIEW)
 
@@ -422,9 +422,9 @@ DEFAULT_LEGEND_ORIENTATION = "Vertical"
 
 def legend_orientation_label(value):
     """
-    Fait : trouve le libelle affiche pour une valeur de legend_orientation.
-    Depend de : LEGEND_ORIENTATION_OPTIONS.
-    Retourne : str, le libelle correspondant (celui de DEFAULT_LEGEND_ORIENTATION si value est inconnue).
+    Does: finds the label shown for a legend_orientation value.
+    Depends on: LEGEND_ORIENTATION_OPTIONS.
+    Returns: str, the matching label (the one for DEFAULT_LEGEND_ORIENTATION if value is unknown).
     """
     for label, option_value in LEGEND_ORIENTATION_OPTIONS:
         if option_value == value:
@@ -434,9 +434,9 @@ def legend_orientation_label(value):
 
 def legend_orientation_from_label(label):
     """
-    Fait : trouve la valeur de legend_orientation associee a un libelle de LEGEND_ORIENTATION_OPTIONS.
-    Depend de : LEGEND_ORIENTATION_OPTIONS.
-    Retourne : str, la valeur correspondante (DEFAULT_LEGEND_ORIENTATION si le libelle est inconnu).
+    Does: finds the legend_orientation value associated with a label from LEGEND_ORIENTATION_OPTIONS.
+    Depends on: LEGEND_ORIENTATION_OPTIONS.
+    Returns: str, the matching value (DEFAULT_LEGEND_ORIENTATION if the label is unknown).
     """
     for option_label, value in LEGEND_ORIENTATION_OPTIONS:
         if option_label == label:
@@ -446,17 +446,17 @@ def legend_orientation_from_label(label):
 
 def apply_legend_orientation(legend_orientation):
     """
-    Fait : applique l'orientation de la legende du viewport (verticale/horizontale).
-    Depend de : ExtAPI.Graphics.GlobalLegendSettings.LegendOrientation, LegendOrientationType (API Ansys, enum ambiant), ExtAPI.Graphics.Redraw.
-    Retourne : rien (effet de bord sur le viewport, ou ne fait rien si legend_orientation est vide).
+    Does: applies the viewport legend orientation (vertical/horizontal).
+    Depends on: ExtAPI.Graphics.GlobalLegendSettings.LegendOrientation, LegendOrientationType (Ansys API, ambient enum), ExtAPI.Graphics.Redraw.
+    Returns: nothing (side effect on the viewport, or does nothing if legend_orientation is empty).
     """
     if not legend_orientation:
         return
     try:
         ExtAPI.Graphics.GlobalLegendSettings.LegendOrientation = getattr(LegendOrientationType, legend_orientation)
-        # Redraw() indispensable : changer cette propriete par script ne rafraichit pas seul le
-        # viewport (meme constat que pour la legende, voir reset_legend) - sans cet appel, l'image
-        # exportee juste apres reste sur l'ancienne orientation.
+        # Redraw() is essential: changing this property via script does not refresh the
+        # viewport on its own (same observation as for the legend, see reset_legend) - without this call, the image
+        # exported right after stays on the old orientation.
         ExtAPI.Graphics.Redraw()
     except Exception as e:
         print "Unable to apply legend orientation '{}': {}".format(legend_orientation, str(e))
@@ -464,9 +464,9 @@ def apply_legend_orientation(legend_orientation):
 
 def reset_legend_orientation():
     """
-    Fait : repasse l'orientation de la legende a Verticale (etat neutre) apres une capture personnalisee.
-    Depend de : apply_legend_orientation, DEFAULT_LEGEND_ORIENTATION.
-    Retourne : rien (effet de bord sur le viewport).
+    Does: resets the legend orientation to Vertical (neutral state) after a custom capture.
+    Depends on: apply_legend_orientation, DEFAULT_LEGEND_ORIENTATION.
+    Returns: nothing (side effect on the viewport).
     """
     apply_legend_orientation(DEFAULT_LEGEND_ORIENTATION)
 
@@ -481,9 +481,9 @@ DEFAULT_SCOPING_DISPLAY = "ScopedBodies"
 
 def scoping_display_label(value):
     """
-    Fait : trouve le libelle affiche pour une valeur de scoping_display.
-    Depend de : SCOPING_DISPLAY_OPTIONS.
-    Retourne : str, le libelle correspondant (celui de DEFAULT_SCOPING_DISPLAY si value est inconnue).
+    Does: finds the label shown for a scoping_display value.
+    Depends on: SCOPING_DISPLAY_OPTIONS.
+    Returns: str, the matching label (the one for DEFAULT_SCOPING_DISPLAY if value is unknown).
     """
     for label, option_value in SCOPING_DISPLAY_OPTIONS:
         if option_value == value:
@@ -493,9 +493,9 @@ def scoping_display_label(value):
 
 def scoping_display_from_label(label):
     """
-    Fait : trouve la valeur de scoping_display associee a un libelle de SCOPING_DISPLAY_OPTIONS.
-    Depend de : SCOPING_DISPLAY_OPTIONS.
-    Retourne : str, la valeur correspondante (DEFAULT_SCOPING_DISPLAY si le libelle est inconnu).
+    Does: finds the scoping_display value associated with a label from SCOPING_DISPLAY_OPTIONS.
+    Depends on: SCOPING_DISPLAY_OPTIONS.
+    Returns: str, the matching value (DEFAULT_SCOPING_DISPLAY if the label is unknown).
     """
     for option_label, value in SCOPING_DISPLAY_OPTIONS:
         if option_label == label:
@@ -505,18 +505,18 @@ def scoping_display_from_label(label):
 
 def apply_scoping_display(scoping_display):
     """
-    Fait : applique le mode d'affichage du scoping (corps scopes / resultat seul / tous les corps) avant capture.
-    Depend de : ExtAPI.Graphics.ViewOptions.ResultPreference.ScopingDisplay, MechanicalEnums.Graphics.ScopingDisplay (API Ansys, enum ambiant), ExtAPI.Graphics.Redraw.
-    Retourne : rien (effet de bord sur le viewport, ou ne fait rien si scoping_display est vide).
+    Does: applies the scoping display mode (scoped bodies / result only / all bodies) before capture.
+    Depends on: ExtAPI.Graphics.ViewOptions.ResultPreference.ScopingDisplay, MechanicalEnums.Graphics.ScopingDisplay (Ansys API, ambient enum), ExtAPI.Graphics.Redraw.
+    Returns: nothing (side effect on the viewport, or does nothing if scoping_display is empty).
     """
     if not scoping_display:
         return
     try:
         vo = ExtAPI.Graphics.ViewOptions
         vo.ResultPreference.ScopingDisplay = getattr(MechanicalEnums.Graphics.ScopingDisplay, scoping_display)
-        # Redraw() indispensable : changer cette propriete par script ne rafraichit pas seul le
-        # viewport (meme constat que pour ContourView/LegendOrientation) - sans cet appel, l'image
-        # exportee juste apres reste sur l'ancien mode d'affichage.
+        # Redraw() is essential: changing this property via script does not refresh the
+        # viewport on its own (same observation as for ContourView/LegendOrientation) - without this call, the image
+        # exported right after stays on the old display mode.
         ExtAPI.Graphics.Redraw()
     except Exception as e:
         print "Unable to apply scoping mode '{}': {}".format(scoping_display, str(e))
@@ -524,9 +524,9 @@ def apply_scoping_display(scoping_display):
 
 def reset_scoping_display():
     """
-    Fait : repasse le mode d'affichage du scoping a Corps scopes (etat neutre) apres une capture personnalisee.
-    Depend de : apply_scoping_display, DEFAULT_SCOPING_DISPLAY.
-    Retourne : rien (effet de bord sur le viewport).
+    Does: resets the scoping display mode to Scoped Bodies (neutral state) after a custom capture.
+    Depends on: apply_scoping_display, DEFAULT_SCOPING_DISPLAY.
+    Returns: nothing (side effect on the viewport).
     """
     apply_scoping_display(DEFAULT_SCOPING_DISPLAY)
 
@@ -536,9 +536,9 @@ NO_LEGEND_LABEL = "-- Automatic legend --"
 
 def collect_legend_files():
     """
-    Fait : liste les legendes disponibles dans LEGEND_FOLDER (fichiers .xml).
-    Depend de : os.path.isdir/os.listdir, LEGEND_FOLDER (00_constants.py).
-    Retourne : list, noms de legende sans extension (str), tries alphabetiquement, vide si dossier absent.
+    Does: lists the legends available in LEGEND_FOLDER (.xml files).
+    Depends on: os.path.isdir/os.listdir, LEGEND_FOLDER (00_constants.py).
+    Returns: list, legend names without extension (str), sorted alphabetically, empty if the folder is absent.
     """
     if not os.path.isdir(LEGEND_FOLDER):
         return []
@@ -547,21 +547,21 @@ def collect_legend_files():
 
 def get_result_display_unit(result_obj, force_evaluate=True):
     """
-    Fait : extrait l'unite du resultat affiche (ex: "MPa") depuis le texte de sa propriete Minimum/Maximum/Average.
-    Depend de : result_obj.EvaluateAllResults, result_obj.VisibleProperties (le panneau Details).
-    Retourne : str, l'unite detectee (ex: "MPa"), ou None si indisponible.
+    Does: extracts the displayed result's unit (e.g. "MPa") from the text of its Minimum/Maximum/Average property.
+    Depends on: result_obj.EvaluateAllResults, result_obj.VisibleProperties (the Details panel).
+    Returns: str, the detected unit (e.g. "MPa"), or None if unavailable.
     """
-    # result_obj.Maximum.Unit s'est avere peu fiable (unite absente/incorrecte selon le type de resultat) ; le texte de VisibleProperties contient toujours l'unite reellement utilisee.
+    # result_obj.Maximum.Unit turned out to be unreliable (unit missing/incorrect depending on the result type); the VisibleProperties text always contains the unit actually used.
     if force_evaluate:
         try:
             result_obj.EvaluateAllResults()
         except Exception:
             pass
 
-    # "Minimum Occurs On"/"Maximum Occurs On" sont exclus expres : leur StringValue est un nom de corps, pas une valeur chiffree suivie d'une unite.
+    # "Minimum Occurs On"/"Maximum Occurs On" are deliberately excluded: their StringValue is a body name, not a numeric value followed by a unit.
     candidate_captions = ("Minimum", "Maximum", "Average", "Minimum Value", "Maximum Value", "Average Value")
 
-    # Log reserve aux appels reels (force_evaluate=True) : sinon la simple ouverture de la fenetre "..." inonderait la console sans rien generer.
+    # Logging reserved for real calls (force_evaluate=True): otherwise simply opening the "..." window would flood the console without generating anything.
     try:
         for prop in result_obj.VisibleProperties:
             try:
@@ -588,9 +588,9 @@ def get_result_display_unit(result_obj, force_evaluate=True):
 
 def apply_legend_if_exists(legend_name, result_obj):
     """
-    Fait : importe une legende par son nom dans l'unite du resultat concerne et l'applique au viewport.
-    Depend de : LEGEND_FOLDER, get_result_display_unit, ExtAPI.Graphics.ImportLegend, CurrentLegendSettings.
-    Retourne : rien (effet de bord : change la legende du viewport, ou ne fait rien si legend_name est None).
+    Does: imports a legend by name in the unit of the relevant result and applies it to the viewport.
+    Depends on: LEGEND_FOLDER, get_result_display_unit, ExtAPI.Graphics.ImportLegend, CurrentLegendSettings.
+    Returns: nothing (side effect: changes the viewport legend, or does nothing if legend_name is None).
     """
     if not legend_name:
         return
@@ -599,14 +599,14 @@ def apply_legend_if_exists(legend_name, result_obj):
         print "Legend not found: " + xml_path
         return
 
-    # ImportLegend/Reset comparent l'unite demandee a celle de l'objet ACTUELLEMENT ACTIF dans le viewport, pas a result_obj : sans cet Activate() explicite, l'unite comparee restait celle de la ligne precedente.
+    # ImportLegend/Reset compare the requested unit to that of the object CURRENTLY ACTIVE in the viewport, not to result_obj: without this explicit Activate(), the unit compared would stay the one from the previous row.
     try:
         result_obj.Activate()
         ExtAPI.Graphics.Redraw()
     except Exception as e:
         print "Unable to activate {} before applying the legend: {}".format(result_obj.Name, str(e))
 
-    # Tentative systematique meme si unit est None : laisse remonter l'erreur .NET reelle en console plutot que d'abandonner silencieusement.
+    # Attempted systematically even if unit is None: lets the actual .NET error surface in the console instead of silently giving up.
     unit = get_result_display_unit(result_obj)
     print "Legend '{}' on {}: unit used for ImportLegend = {}".format(legend_name, result_obj.Name, unit)
 
@@ -623,11 +623,11 @@ def apply_legend_if_exists(legend_name, result_obj):
 
 def reset_legend():
     """
-    Fait : reinitialise la legende courante du viewport a son etat automatique.
-    Depend de : Ansys.Mechanical.Graphics.Tools.CurrentLegendSettings, ExtAPI.Graphics.Redraw.
-    Retourne : rien (effet de bord : remet la legende affichee a l'automatique).
+    Does: resets the viewport's current legend to its automatic state.
+    Depends on: Ansys.Mechanical.Graphics.Tools.CurrentLegendSettings, ExtAPI.Graphics.Redraw.
+    Returns: nothing (side effect: resets the displayed legend to automatic).
     """
-    # Redraw() indispensable : changer cette propriete par script ne rafraichit pas seul le viewport tant qu'aucun autre evenement ne force un redessin.
+    # Redraw() is essential: changing this property via script does not refresh the viewport on its own as long as no other event forces a redraw.
     try:
         Ansys.Mechanical.Graphics.Tools.CurrentLegendSettings().Reset()
         ExtAPI.Graphics.Redraw()
@@ -635,7 +635,7 @@ def reset_legend():
         print "Unable to reset legend: " + str(e)
 
 
-# Templates disponibles : 2, 3, 4, 6 et 8 steps ; 5, 7 steps (et au-dela de 8) retombent automatiquement sur le mode "slides individuelles".
+# Available templates: 2, 3, 4, 6 and 8 steps; 5, 7 steps (and beyond 8) automatically fall back to "individual slides" mode.
 MULTI_STEP_SLIDE_TEMPLATES = {
     2: {
         "layout_index": 3,
@@ -662,18 +662,18 @@ MULTI_STEP_SLIDE_TEMPLATES = {
 
 def get_multi_step_template(step_count):
     """
-    Fait : recupere le template de slide combinee correspondant a ce nombre exact de steps.
-    Depend de : MULTI_STEP_SLIDE_TEMPLATES.
-    Retourne : dict (layout_index/image_shape_indices), ou None si aucun template pour ce nombre de steps.
+    Does: retrieves the combined-slide template matching this exact number of steps.
+    Depends on: MULTI_STEP_SLIDE_TEMPLATES.
+    Returns: dict (layout_index/image_shape_indices), or None if no template exists for this number of steps.
     """
     return MULTI_STEP_SLIDE_TEMPLATES.get(step_count)
 
 
 def get_step_count(analysis):
     """
-    Fait : lit le nombre de steps definis au niveau de l'analyse.
-    Depend de : analysis.AnalysisSettings.NumberOfSteps.
-    Retourne : int, le nombre de steps, ou 1 en cas d'erreur.
+    Does: reads the number of steps defined at the analysis level.
+    Depends on: analysis.AnalysisSettings.NumberOfSteps.
+    Returns: int, the number of steps, or 1 on error.
     """
     try:
         return int(analysis.AnalysisSettings.NumberOfSteps)
@@ -684,11 +684,11 @@ def get_step_count(analysis):
 
 def _set_result_display_time(result_obj, display_time):
     """
-    Fait : repositionne un resultat sur un DisplayTime precis et le reevalue.
-    Depend de : result_obj.DisplayTime/EvaluateAllResults/Evaluate, ExtAPI.Graphics.Redraw, SWF.Application.DoEvents.
-    Retourne : rien (effet de bord : restaure l'affichage d'origine du resultat).
+    Does: repositions a result at a precise DisplayTime and re-evaluates it.
+    Depends on: result_obj.DisplayTime/EvaluateAllResults/Evaluate, ExtAPI.Graphics.Redraw, SWF.Application.DoEvents.
+    Returns: nothing (side effect: restores the result's original display).
     """
-    # Uniquement pour restaurer l'etat d'origine apres coup : les captures par step passent par evaluate_result_for_step (SetNumber), pas par cette fonction.
+    # Only used to restore the original state afterwards: per-step captures go through evaluate_result_for_step (SetNumber), not through this function.
     result_obj.DisplayTime = display_time
     for method_name in ("EvaluateAllResults", "Evaluate"):
         method = getattr(result_obj, method_name, None)
@@ -708,11 +708,11 @@ def _set_result_display_time(result_obj, display_time):
 
 def evaluate_result_for_step(result_obj, step_number):
     """
-    Fait : positionne un resultat sur un set/step precis via SetNumber plutot que DisplayTime.
-    Depend de : result_obj.Activate/By/SetNumber/EvaluateAllResults, SetDriverStyle.ResultSet, ExtAPI.Graphics.Redraw.
-    Retourne : rien (effet de bord : le resultat affiche desormais ce step).
+    Does: positions a result on a precise set/step via SetNumber rather than DisplayTime.
+    Depends on: result_obj.Activate/By/SetNumber/EvaluateAllResults, SetDriverStyle.ResultSet, ExtAPI.Graphics.Redraw.
+    Returns: nothing (side effect: the result now displays this step).
     """
-    # SetNumber navigue vers un set deja calcule par le solveur sans reevaluation complete : plus fiable pour enchainer plusieurs steps que l'ancienne approche par DisplayTime.
+    # SetNumber navigates to a set already computed by the solver without a full re-evaluation: more reliable for chaining several steps than the old DisplayTime approach.
     result_obj.Activate()
     result_obj.By = SetDriverStyle.ResultSet
     result_obj.SetNumber = step_number
@@ -722,26 +722,26 @@ def evaluate_result_for_step(result_obj, step_number):
 
 def export_result_image_for_step(result_obj, step_number):
     """
-    Fait : exporte l'image d'un resultat pour un set/step precis.
-    Depend de : evaluate_result_for_step, export_current_view_image (02_image_export.py).
-    Retourne : str, le chemin du PNG genere.
+    Does: exports the image of a result for a precise set/step.
+    Depends on: evaluate_result_for_step, export_current_view_image (02_image_export.py).
+    Returns: str, the path of the generated PNG.
     """
-    # Export direct de la vue apres Activate(), sans Figure snapshot (contrairement a export_object_image).
+    # Direct view export after Activate(), without a Figure snapshot (unlike export_object_image).
     evaluate_result_for_step(result_obj, step_number)
     return export_current_view_image("{}_step{}".format(result_obj.Name, step_number))
 
 
 def add_multi_step_image_slide(presentation, template, title, image_paths):
     """
-    Fait : ajoute une slide combinee (plusieurs images de steps) a partir d'un template de MULTI_STEP_SLIDE_TEMPLATES.
-    Depend de : presentation.SlideMaster.CustomLayouts, presentation.Slides.AddSlide.
-    Retourne : PPT.Slide, la slide creee.
+    Does: adds a combined slide (several step images) from a MULTI_STEP_SLIDE_TEMPLATES template.
+    Depends on: presentation.SlideMaster.CustomLayouts, presentation.Slides.AddSlide.
+    Returns: PPT.Slide, the created slide.
     """
     layout = presentation.SlideMaster.CustomLayouts[template["layout_index"]]
     slide = presentation.Slides.AddSlide(presentation.Slides.Count + 1, layout)
     slide.Shapes[1].TextFrame.TextRange.Text = title
 
-    # Tri par position reelle (haut->bas, gauche->droite), pas par indice de shape, pour respecter l'ordre chronologique des steps.
+    # Sorted by actual position (top->bottom, left->right), not by shape index, to respect the chronological order of the steps.
     placeholders = [slide.Shapes[idx] for idx in template["image_shape_indices"]]
     placeholders.sort(key=lambda ph: (ph.Top, ph.Left))
 
@@ -754,15 +754,15 @@ def add_multi_step_image_slide(presentation, template, title, image_paths):
 
 def capture_multi_result_cell_image(cfg, views, section_planes, section_labels):
     """
-    Fait : applique la configuration graphique d'UNE case (slide combinee multi-resultats : vue,
-    coupe, legende, apparence, scale factor) et exporte une image unique du resultat choisi - pas de
-    notion de step ici (contrairement a build_single_result_slide/build_step_based_result_slides),
-    chaque case porte un resultat different affiche dans son etat courant.
-    Depend de : apply_view_if_exists, apply_section_plane, apply_scale_factor, apply_contour_view,
+    Does: applies the graphic configuration of ONE cell (combined multi-result slide: view,
+    section, legend, appearance, scale factor) and exports a single image of the chosen result - no
+    notion of step here (unlike build_single_result_slide/build_step_based_result_slides),
+    each cell carries a different result displayed in its current state.
+    Depends on: apply_view_if_exists, apply_section_plane, apply_scale_factor, apply_contour_view,
     apply_legend_orientation, apply_scoping_display, apply_legend_if_exists, export_solution_image
     (02_image_export.py), disable_all_section_planes, reset_scale_factor/reset_contour_view/
     reset_legend_orientation/reset_scoping_display.
-    Retourne : str, le chemin de l'image exportee, ou None en cas d'erreur.
+    Returns: str, the path of the exported image, or None on error.
     """
     obj = cfg.obj
     image_path = None
@@ -788,12 +788,12 @@ def capture_multi_result_cell_image(cfg, views, section_planes, section_labels):
 
 def build_multi_result_slide(report, template, cell_configs, views, section_planes, section_labels):
     """
-    Fait : construit UNE slide combinee "differents resultats" (un resultat different par case
-    configuree, chacun avec sa propre vue/coupe/legende/apparence), a partir d'un template de
-    MULTI_STEP_SLIDE_TEMPLATES (meme famille de templates que les slides combinees multi-step, mais
-    ici chaque emplacement recoit un resultat different plutot qu'un meme resultat a un step different).
-    Depend de : capture_multi_result_cell_image, add_multi_step_image_slide.
-    Retourne : rien (effet de bord : ajoute une slide a report.presentation, ou ne fait rien si aucune case n'est configuree).
+    Does: builds ONE combined "different results" slide (a different result per configured
+    cell, each with its own view/section/legend/appearance), from a
+    MULTI_STEP_SLIDE_TEMPLATES template (same template family as the multi-step combined slides, but
+    here each slot receives a different result rather than the same result at a different step).
+    Depends on: capture_multi_result_cell_image, add_multi_step_image_slide.
+    Returns: nothing (side effect: adds a slide to report.presentation, or does nothing if no cell is configured).
     """
     image_paths = []
     titles = []
@@ -816,11 +816,11 @@ def build_multi_result_slide(report, template, cell_configs, views, section_plan
 
 def build_step_based_result_slides(report, cfg, obj, subtitle, analysis):
     """
-    Fait : construit la ou les slides d'un resultat avec une selection de steps (une combinee si possible, sinon une par step).
-    Depend de : get_multi_step_template, export_result_image_for_step, export_result_tabular_data, report.add_image_table_slide.
-    Retourne : rien (effet de bord : ajoute une ou plusieurs slides au rapport).
+    Does: builds the slide(s) for a result with a step selection (one combined slide if possible, otherwise one per step).
+    Depends on: get_multi_step_template, export_result_image_for_step, export_result_tabular_data, report.add_image_table_slide.
+    Returns: nothing (side effect: adds one or more slides to the report).
     """
-    # analysis n'est plus utilise (captures par SetNumber, pas par un temps calcule depuis l'analyse) ; garde dans la signature pour ne pas casser les appelants.
+    # analysis is no longer used (captures via SetNumber, not via a time computed from the analysis); kept in the signature so as not to break callers.
     steps = cfg.selected_steps
     template = get_multi_step_template(len(steps)) if cfg.step_display_mode == "combined" else None
     original_display_time = obj.DisplayTime
@@ -851,16 +851,16 @@ def build_step_based_result_slides(report, cfg, obj, subtitle, analysis):
             title = "{} - Step {}".format(display_name, step)
             report.add_image_table_slide(title, subtitle, img_path=img_path, csv_path=csv_path)
     finally:
-        # Restauration obligatoire meme en cas d'erreur : sinon l'objet reste fige sur le dernier step traite et deregle la legende des slides suivantes.
+        # Restoration mandatory even on error: otherwise the object stays frozen on the last processed step and throws off the legend of the following slides.
         obj.By = original_by
         _set_result_display_time(obj, original_display_time)
 
 
 def flatten_results(objects):
     """
-    Fait : deplie recursivement les dossiers de regroupement (ex: "Group Similar Children") en leurs objets terminaux.
-    Depend de : rien (parcourt obj.Children recursivement).
-    Retourne : list, les objets feuilles exportables en image/CSV.
+    Does: recursively unfolds grouping folders (e.g. "Group Similar Children") into their leaf objects.
+    Depends on: nothing (recursively iterates over obj.Children).
+    Returns: list, the leaf objects exportable to image/CSV.
     """
     leaves = []
     for obj in objects:
@@ -877,9 +877,9 @@ def flatten_results(objects):
 
 def collect_boundary_conditions(analysis=None):
     """
-    Fait : liste les Boundary Conditions du modele, limitees a une analyse si fournie.
-    Depend de : ExtAPI.DataModel.GetObjectsByType(GenericBoundaryCondition), _is_descendant_of.
-    Retourne : list, les objets Boundary Condition (tout le projet si analysis est None).
+    Does: lists the Boundary Conditions in the model, limited to one analysis if given.
+    Depends on: ExtAPI.DataModel.GetObjectsByType(GenericBoundaryCondition), _is_descendant_of.
+    Returns: list, the Boundary Condition objects (whole project if analysis is None).
     """
     all_bcs = list(ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.GenericBoundaryCondition))
     if analysis is None:
@@ -889,9 +889,9 @@ def collect_boundary_conditions(analysis=None):
 
 def collect_boundary_conditions_multi(analyses):
     """
-    Fait : liste les Boundary Conditions de toutes les analyses fournies.
-    Depend de : collect_boundary_conditions.
-    Retourne : list de tuples (obj, analysis).
+    Does: lists the Boundary Conditions of all given analyses.
+    Depends on: collect_boundary_conditions.
+    Returns: list of tuples (obj, analysis).
     """
     pairs = []
     for analysis in analyses:
@@ -902,12 +902,12 @@ def collect_boundary_conditions_multi(analyses):
 
 def collect_analyses():
     """
-    Fait : liste les analyses du projet exploitables par le generateur (Analysis Settings valides).
-    Depend de : ExtAPI.DataModel.AnalysisList, analysis.AnalysisSettings.NumberOfSteps.
-    Retourne : list, les objets analyse du projet - exclut les addins de post-traitement (ex : FEMFAT)
-    dont AnalysisSettings est None : ils n'ont ni steps ni resultats de solution classiques, et
-    faisaient planter toute la generation (settings.NumberOfSteps sur un objet None) des qu'ils
-    etaient selectionnes dans une liste de la GUI.
+    Does: lists the project's analyses usable by the generator (valid Analysis Settings).
+    Depends on: ExtAPI.DataModel.AnalysisList, analysis.AnalysisSettings.NumberOfSteps.
+    Returns: list, the project's analysis objects - excludes post-processing addins (e.g. FEMFAT)
+    whose AnalysisSettings is None: they have neither steps nor classic solution results, and
+    used to crash the whole generation (settings.NumberOfSteps on a None object) as soon as they
+    were selected in a GUI list.
     """
     analyses = []
     for analysis in ExtAPI.DataModel.AnalysisList:
@@ -922,9 +922,9 @@ def collect_analyses():
 
 def collect_bolt_pretensions(analysis=None):
     """
-    Fait : liste les Bolt Pretension du modele, limitees a une analyse si fournie.
-    Depend de : ExtAPI.DataModel.GetObjectsByType(BoltPretension), _is_descendant_of.
-    Retourne : list, les objets Bolt Pretension (tout le projet si analysis est None).
+    Does: lists the Bolt Pretensions in the model, limited to one analysis if given.
+    Depends on: ExtAPI.DataModel.GetObjectsByType(BoltPretension), _is_descendant_of.
+    Returns: list, the Bolt Pretension objects (whole project if analysis is None).
     """
     all_bolt_pretensions = list(ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.BoltPretension))
     if analysis is None:
@@ -934,9 +934,9 @@ def collect_bolt_pretensions(analysis=None):
 
 def collect_bolt_pretensions_multi(analyses):
     """
-    Fait : liste les Bolt Pretension de toutes les analyses fournies.
-    Depend de : collect_bolt_pretensions.
-    Retourne : list de tuples (obj, analysis).
+    Does: lists the Bolt Pretensions of all given analyses.
+    Depends on: collect_bolt_pretensions.
+    Returns: list of tuples (obj, analysis).
     """
     pairs = []
     for analysis in analyses:
@@ -947,11 +947,11 @@ def collect_bolt_pretensions_multi(analyses):
 
 def _is_descendant_of(obj, ancestor):
     """
-    Fait : verifie si obj est un descendant (direct ou indirect) de ancestor dans l'arbre Mechanical.
-    Depend de : obj.Parent (remontee de l'arbre).
-    Retourne : bool, True si ancestor est bien un parent de obj.
+    Does: checks whether obj is a descendant (direct or indirect) of ancestor in the Mechanical tree.
+    Depends on: obj.Parent (walking up the tree).
+    Returns: bool, True if ancestor is indeed a parent of obj.
     """
-    # Distingue un Contact Tool de la branche Connections (sans step) de son homonyme dans Solution (avec step) : meme categorie .NET, seule la position dans l'arbre differe.
+    # Distinguishes a Contact Tool from the Connections branch (without step) from its namesake in Solution (with step): same .NET category, only the position in the tree differs.
     node = getattr(obj, "Parent", None)
     while node is not None:
         if node == ancestor:
@@ -962,11 +962,11 @@ def _is_descendant_of(obj, ancestor):
 
 def collect_contact_tool_results(analysis):
     """
-    Fait : liste les resultats des dossiers Contact Tool de la branche Solution (avec steps) pour une analyse.
-    Depend de : ExtAPI.DataModel.GetObjectsByType(ContactTool), _is_descendant_of, flatten_results.
-    Retourne : list, les objets resultat exportables propres a la branche Solution.
+    Does: lists the results of the Contact Tool folders from the Solution branch (with steps) for an analysis.
+    Depends on: ExtAPI.DataModel.GetObjectsByType(ContactTool), _is_descendant_of, flatten_results.
+    Returns: list, the exportable result objects specific to the Solution branch.
     """
-    # ContactTool existe aussi dans Connections (sans step, memes noms d'enfants) : le filtre par branche evite de melanger les deux listes.
+    # ContactTool also exists in Connections (without step, same children names): filtering by branch avoids mixing the two lists.
     tools = ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.ContactTool)
     children = []
     for tool in tools:
@@ -977,9 +977,9 @@ def collect_contact_tool_results(analysis):
 
 def collect_contact_tool_results_multi(analyses):
     """
-    Fait : liste les resultats Contact Tool (branche Solution) de toutes les analyses fournies.
-    Depend de : collect_contact_tool_results.
-    Retourne : list de tuples (obj, analysis).
+    Does: lists the Contact Tool results (Solution branch) of all given analyses.
+    Depends on: collect_contact_tool_results.
+    Returns: list of tuples (obj, analysis).
     """
     pairs = []
     for analysis in analyses:
@@ -990,9 +990,9 @@ def collect_contact_tool_results_multi(analyses):
 
 def collect_connection_contact_tool_results(analysis):
     """
-    Fait : liste les resultats des dossiers Contact Tool de la branche Connections (sans step) pour une analyse.
-    Depend de : ExtAPI.DataModel.GetObjectsByType(ContactTool), _is_descendant_of, flatten_results.
-    Retourne : list, les objets resultat exportables propres a la branche Connections.
+    Does: lists the results of the Contact Tool folders from the Connections branch (without step) for an analysis.
+    Depends on: ExtAPI.DataModel.GetObjectsByType(ContactTool), _is_descendant_of, flatten_results.
+    Returns: list, the exportable result objects specific to the Connections branch.
     """
     tools = ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.ContactTool)
     children = []
@@ -1004,9 +1004,9 @@ def collect_connection_contact_tool_results(analysis):
 
 def collect_bolt_tool_results(analysis=None):
     """
-    Fait : liste les resultats des dossiers Bolt Tool sous Solution, limites a une analyse si fournie.
-    Depend de : ExtAPI.DataModel.GetObjectsByType(BoltTool), _is_descendant_of, flatten_results.
-    Retourne : list, les objets resultat exportables (tout le projet si analysis est None).
+    Does: lists the results of the Bolt Tool folders under Solution, limited to one analysis if given.
+    Depends on: ExtAPI.DataModel.GetObjectsByType(BoltTool), _is_descendant_of, flatten_results.
+    Returns: list, the exportable result objects (whole project if analysis is None).
     """
     tools = ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.BoltTool)
     children = []
@@ -1021,9 +1021,9 @@ def collect_bolt_tool_results(analysis=None):
 
 def collect_bolt_tool_results_multi(analyses):
     """
-    Fait : liste les resultats Bolt Tool de toutes les analyses fournies.
-    Depend de : collect_bolt_tool_results.
-    Retourne : list de tuples (obj, analysis).
+    Does: lists the Bolt Tool results of all given analyses.
+    Depends on: collect_bolt_tool_results.
+    Returns: list of tuples (obj, analysis).
     """
     pairs = []
     for analysis in analyses:
@@ -1034,13 +1034,13 @@ def collect_bolt_tool_results_multi(analyses):
 
 def collect_all_results(analysis):
     """
-    Fait : liste les resultats "simples" de Solution (Deformation, Contrainte, Probe...), hors Solution Information/Contact Tool/Bolt Tool.
-    Depend de : analysis.Solution.Children, ExtAPI.DataModel.GetObjectsByType(ContactTool/BoltTool), flatten_results.
-    Retourne : list, les objets resultat exportables.
+    Does: lists the "simple" Solution results (Deformation, Stress, Probe...), excluding Solution Information/Contact Tool/Bolt Tool.
+    Depends on: analysis.Solution.Children, ExtAPI.DataModel.GetObjectsByType(ContactTool/BoltTool), flatten_results.
+    Returns: list, the exportable result objects.
     """
     excluded_categories = [DataModelObjectCategory.ContactTool, DataModelObjectCategory.BoltTool]
 
-    # Exclusion par identite en plus de la categorie : DataModelObjectCategory peut echouer silencieusement (category=None) sur le dossier Contact/Bolt Tool lui-meme, ce qui le ferait passer le filtre et dupliquerait ses enfants avec la liste separee dediee.
+    # Exclusion by identity in addition to category: DataModelObjectCategory can fail silently (category=None) on the Contact/Bolt Tool folder itself, which would let it pass the filter and duplicate its children with the dedicated separate list.
     already_handled = list(ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.ContactTool))
     already_handled += list(ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.BoltTool))
 
@@ -1065,9 +1065,9 @@ def collect_all_results(analysis):
 
 def collect_all_results_multi(analyses):
     """
-    Fait : liste les resultats simples de toutes les analyses fournies.
-    Depend de : collect_all_results.
-    Retourne : list de tuples (obj, analysis).
+    Does: lists the simple results of all given analyses.
+    Depends on: collect_all_results.
+    Returns: list of tuples (obj, analysis).
     """
     pairs = []
     for analysis in analyses:
@@ -1078,9 +1078,9 @@ def collect_all_results_multi(analyses):
 
 def build_single_bc_slide(report, cfg, views, section_planes, section_labels):
     """
-    Fait : construit la slide d'UNE Boundary Condition avec sa vue/coupe/legende/apparence configuree.
-    Depend de : apply_view_if_exists, apply_section_plane, apply_scale_factor, apply_legend_if_exists, apply_contour_view, apply_legend_orientation, apply_scoping_display, export_object_image, export_bc_tabular_data, report.add_image_table_slide.
-    Retourne : rien (effet de bord : ajoute une slide au rapport).
+    Does: builds the slide for ONE Boundary Condition with its configured view/section/legend/appearance.
+    Depends on: apply_view_if_exists, apply_section_plane, apply_scale_factor, apply_legend_if_exists, apply_contour_view, apply_legend_orientation, apply_scoping_display, export_object_image, export_bc_tabular_data, report.add_image_table_slide.
+    Returns: nothing (side effect: adds a slide to the report).
     """
     bc = cfg.obj
     try:
@@ -1111,9 +1111,9 @@ def build_single_bc_slide(report, cfg, views, section_planes, section_labels):
 
 def build_bc_slides(report, row_configs, views, section_planes, section_labels):
     """
-    Fait : ajoute une slide pour chaque Boundary Condition selectionnee.
-    Depend de : build_single_bc_slide.
-    Retourne : rien (effet de bord : ajoute une slide par ligne au rapport).
+    Does: adds a slide for each selected Boundary Condition.
+    Depends on: build_single_bc_slide.
+    Returns: nothing (side effect: adds a slide per row to the report).
     """
     for cfg in row_configs:
         build_single_bc_slide(report, cfg, views, section_planes, section_labels)
@@ -1121,9 +1121,9 @@ def build_bc_slides(report, row_configs, views, section_planes, section_labels):
 
 def build_single_bp_slide(report, cfg, views, section_planes, section_labels):
     """
-    Fait : construit la slide d'UNE Bolt Pretension avec sa vue/coupe/legende/apparence configuree.
-    Depend de : apply_view_if_exists, apply_section_plane, apply_scale_factor, apply_legend_if_exists, apply_contour_view, apply_legend_orientation, apply_scoping_display, export_object_image, export_bp_tabular_data, report.add_image_table_slide.
-    Retourne : rien (effet de bord : ajoute une slide au rapport).
+    Does: builds the slide for ONE Bolt Pretension with its configured view/section/legend/appearance.
+    Depends on: apply_view_if_exists, apply_section_plane, apply_scale_factor, apply_legend_if_exists, apply_contour_view, apply_legend_orientation, apply_scoping_display, export_object_image, export_bp_tabular_data, report.add_image_table_slide.
+    Returns: nothing (side effect: adds a slide to the report).
     """
     bp = cfg.obj
     try:
@@ -1154,9 +1154,9 @@ def build_single_bp_slide(report, cfg, views, section_planes, section_labels):
 
 def build_bp_slides(report, row_configs, views, section_planes, section_labels):
     """
-    Fait : ajoute une slide pour chaque Bolt Pretension selectionnee.
-    Depend de : build_single_bp_slide.
-    Retourne : rien (effet de bord : ajoute une slide par ligne au rapport).
+    Does: adds a slide for each selected Bolt Pretension.
+    Depends on: build_single_bp_slide.
+    Returns: nothing (side effect: adds a slide per row to the report).
     """
     for cfg in row_configs:
         build_single_bp_slide(report, cfg, views, section_planes, section_labels)
@@ -1164,9 +1164,9 @@ def build_bp_slides(report, row_configs, views, section_planes, section_labels):
 
 def build_single_result_slide(report, cfg, subtitle, views, section_planes, section_labels, analysis):
     """
-    Fait : construit la slide d'UN objet resultat, avec sa vue/coupe/legende/apparence et sa selection de steps eventuelle.
-    Depend de : apply_view_if_exists, apply_section_plane, apply_scale_factor, apply_legend_if_exists, apply_contour_view, apply_legend_orientation, apply_scoping_display, build_step_based_result_slides, export_object_image, export_result_tabular_data.
-    Retourne : rien (effet de bord : ajoute une ou plusieurs slides au rapport).
+    Does: builds the slide for ONE result object, with its view/section/legend/appearance and optional step selection.
+    Depends on: apply_view_if_exists, apply_section_plane, apply_scale_factor, apply_legend_if_exists, apply_contour_view, apply_legend_orientation, apply_scoping_display, build_step_based_result_slides, export_object_image, export_result_tabular_data.
+    Returns: nothing (side effect: adds one or more slides to the report).
     """
     obj = cfg.obj
     try:
@@ -1210,27 +1210,27 @@ def build_single_result_slide(report, cfg, subtitle, views, section_planes, sect
 
 def build_result_slides(report, row_configs, subtitle, views, section_planes, section_labels, analysis):
     """
-    Fait : ajoute une slide pour chaque objet resultat selectionne (Contact Tool, Bolt Tool ou resultats generaux).
-    Depend de : build_single_result_slide.
-    Retourne : rien (effet de bord : ajoute une slide par ligne au rapport).
+    Does: adds a slide for each selected result object (Contact Tool, Bolt Tool, or general results).
+    Depends on: build_single_result_slide.
+    Returns: nothing (side effect: adds a slide per row to the report).
     """
     for cfg in row_configs:
         build_single_result_slide(report, cfg, subtitle, views, section_planes, section_labels, analysis)
 
 
-DEFAULT_CONTEXT_OPACITY_PERCENT = 50  
+DEFAULT_CONTEXT_OPACITY_PERCENT = 25
 
 
 class GeometryPartRowConfig(object):
     """
-    Configuration d'affichage pour une slide "geometrie simple" (une piece isolee, opaque, dans le contexte transparent de l'assemblage).
+    Display configuration for a "simple geometry" slide (one isolated, opaque part, within the transparent context of the assembly).
     """
 
     def __init__(self, body):
         """
-        Fait : initialise la configuration d'une piece isolee (geometrie simple) avec ses valeurs par defaut.
-        Depend de : DEFAULT_CONTEXT_OPACITY_PERCENT.
-        Retourne : rien (constructeur).
+        Does: initializes an isolated part's (simple geometry) configuration with its default values.
+        Depends on: DEFAULT_CONTEXT_OPACITY_PERCENT.
+        Returns: nothing (constructor).
         """
         self.obj = body
         self.view_name = None
@@ -1241,9 +1241,9 @@ class GeometryPartRowConfig(object):
 
 def build_geometry_row_display_name(row_config):
     """
-    Fait : construit le texte affiche dans la liste pour une piece (geometrie simple).
-    Depend de : rien (lit row_config.obj/view_name/section_name/context_opacity_percent).
-    Retourne : str, le nom de la piece suivi des reglages choisis separes par " | ".
+    Does: builds the text shown in the list for a part (simple geometry).
+    Depends on: nothing (reads row_config.obj/view_name/section_name/context_opacity_percent).
+    Returns: str, the part's name followed by the chosen settings separated by " | ".
     """
     parts = [row_config.obj.Name]
     if row_config.view_name:
@@ -1256,23 +1256,23 @@ def build_geometry_row_display_name(row_config):
 
 def collect_bodies():
     """
-    Fait : liste tous les corps (Body) du modele.
-    Depend de : ExtAPI.DataModel.Project.Model.GetChildren(DataModelObjectCategory.Body).
-    Retourne : list, les objets Body du modele.
+    Does: lists all the bodies (Body) in the model.
+    Depends on: ExtAPI.DataModel.Project.Model.GetChildren(DataModelObjectCategory.Body).
+    Returns: list, the model's Body objects.
     """
     return list(ExtAPI.DataModel.Project.Model.GetChildren(DataModelObjectCategory.Body, True))
 
 
 def isolate_body_by_transparency(target_body, all_bodies, context_opacity_percent):
     """
-    Fait : rend une piece totalement opaque et les autres semi-transparentes au pourcentage donne.
-    Depend de : Body.Transparency, Transaction (Ansys.ACT.Mechanical), ExtAPI.Graphics.Redraw.
-    Retourne : rien (effet de bord : change la transparence de tous les corps du modele).
+    Does: makes one part fully opaque and the others semi-transparent at the given percentage.
+    Depends on: Body.Transparency, Transaction (Ansys.ACT.Mechanical), ExtAPI.Graphics.Redraw.
+    Returns: nothing (side effect: changes the transparency of all bodies in the model).
     """
-    # Body.Transparency va de 0.0 (transparent) a 1.0 (opaque), malgre son nom qui suggere l'inverse.
+    # Body.Transparency ranges from 0.0 (transparent) to 1.0 (opaque), despite its name suggesting the opposite.
     context_value = max(0.0, min(1.0, context_opacity_percent / 100.0))
     target_id = target_body.ObjectId
-    # Transaction(True) differe le rafraichissement pendant la boucle ; le Redraw() explicite ensuite reste necessaire pour que le changement soit visible avant la capture d'image.
+    # Transaction(True) defers the refresh during the loop; the explicit Redraw() afterwards is still necessary for the change to be visible before the image capture.
     with Transaction(True):
         for body in all_bodies:
             try:
@@ -1287,9 +1287,9 @@ def isolate_body_by_transparency(target_body, all_bodies, context_opacity_percen
 
 def reset_all_bodies_transparency(all_bodies):
     """
-    Fait : remet toutes les pieces a l'opacite normale (100%).
-    Depend de : Body.Transparency, Transaction (Ansys.ACT.Mechanical), ExtAPI.Graphics.Redraw.
-    Retourne : rien (effet de bord : restaure l'opacite de tous les corps du modele).
+    Does: restores all parts to normal opacity (100%).
+    Depends on: Body.Transparency, Transaction (Ansys.ACT.Mechanical), ExtAPI.Graphics.Redraw.
+    Returns: nothing (side effect: restores the opacity of all bodies in the model).
     """
     with Transaction(True):
         for body in all_bodies:
@@ -1305,16 +1305,16 @@ def reset_all_bodies_transparency(all_bodies):
 
 def export_geometry_part_image(body, all_bodies, context_opacity_percent):
     """
-    Fait : isole une piece (opaque) dans le contexte transparent de l'assemblage, puis exporte son image.
-    Depend de : isolate_body_by_transparency, geometry.AddFigure, export_current_view_image, reset_all_bodies_transparency.
-    Retourne : str, le chemin du PNG genere.
+    Does: isolates a part (opaque) within the transparent context of the assembly, then exports its image.
+    Depends on: isolate_body_by_transparency, geometry.AddFigure, export_current_view_image, reset_all_bodies_transparency.
+    Returns: str, the path of the generated PNG.
     """
     isolate_body_by_transparency(body, all_bodies, context_opacity_percent)
     geometry = ExtAPI.DataModel.Project.Model.Geometry
     figure = geometry.AddFigure()
     figure.Activate()
-    # Pas de SetFit() : le cadrage de la camera (vue choisie via apply_view_if_exists, ou position
-    # manuelle courante) est laisse tel quel, a la responsabilite de l'utilisateur.
+    # No SetFit(): the camera framing (view chosen via apply_view_if_exists, or the current
+    # manual position) is left as is, at the user's responsibility.
     image_path = export_current_view_image("Geometry_" + safe_file_name(body.Name))
     reset_all_bodies_transparency(all_bodies)
     return image_path
@@ -1322,9 +1322,9 @@ def export_geometry_part_image(body, all_bodies, context_opacity_percent):
 
 def build_single_geometry_part_slide(report, cfg, all_bodies, views, section_planes, section_labels):
     """
-    Fait : construit la slide "geometrie simple" (une image, pas de tableau) d'UNE piece isolee.
-    Depend de : apply_view_if_exists, apply_section_plane, export_geometry_part_image, report.add_image_table_slide.
-    Retourne : rien (effet de bord : ajoute une slide au rapport).
+    Does: builds the "simple geometry" slide (one image, no table) for ONE isolated part.
+    Depends on: apply_view_if_exists, apply_section_plane, export_geometry_part_image, report.add_image_table_slide.
+    Returns: nothing (side effect: adds a slide to the report).
     """
     body = cfg.obj
     try:
@@ -1340,9 +1340,9 @@ def build_single_geometry_part_slide(report, cfg, all_bodies, views, section_pla
 
 def build_geometry_part_slides(report, row_configs, all_bodies, views, section_planes, section_labels):
     """
-    Fait : ajoute une slide "geometrie simple" pour chaque piece selectionnee.
-    Depend de : build_single_geometry_part_slide.
-    Retourne : rien (effet de bord : ajoute une slide par piece au rapport).
+    Does: adds a "simple geometry" slide for each selected part.
+    Depends on: build_single_geometry_part_slide.
+    Returns: nothing (side effect: adds a slide per part to the report).
     """
     for cfg in row_configs:
         build_single_geometry_part_slide(report, cfg, all_bodies, views, section_planes, section_labels)
@@ -1350,25 +1350,25 @@ def build_geometry_part_slides(report, row_configs, all_bodies, views, section_p
 
 class MeshPartRowConfig(object):
     """
-    Ligne de selection pour le mesh par piece isolee : le corps et une vue eventuelle (pas de coupe/opacite, isolation par masquage total).
+    Selection row for mesh by isolated part: the body and an optional view (no section/opacity, isolation via full hiding).
     """
 
     def __init__(self, body):
         """
-        Fait : initialise la configuration d'une piece isolee (mesh) avec ses valeurs par defaut.
-        Depend de : rien (affectations simples).
-        Retourne : rien (constructeur).
+        Does: initializes an isolated part's (mesh) configuration with its default values.
+        Depends on: nothing (simple assignments).
+        Returns: nothing (constructor).
         """
         self.obj = body
         self.view_name = None
-        self.configured = False  # passe a True des que le bouton "..." a ete valide (OK)
+        self.configured = False  # becomes True once the "..." button has been confirmed (OK)
 
 
 def build_mesh_part_row_display_name(row_config):
     """
-    Fait : construit le texte affiche dans la liste pour une piece (mesh par piece isolee).
-    Depend de : rien (lit row_config.obj/view_name).
-    Retourne : str, le nom de la piece suivi de la vue choisie, separes par " | ".
+    Does: builds the text shown in the list for a part (mesh by isolated part).
+    Depends on: nothing (reads row_config.obj/view_name).
+    Returns: str, the part's name followed by the chosen view, separated by " | ".
     """
     parts = [row_config.obj.Name]
     if row_config.view_name:
@@ -1378,11 +1378,11 @@ def build_mesh_part_row_display_name(row_config):
 
 def show_only_body(target_body, all_bodies):
     """
-    Fait : masque toutes les pieces sauf target_body.
-    Depend de : Body.Visible, Transaction (Ansys.ACT.Mechanical).
-    Retourne : rien (effet de bord : change la visibilite de tous les corps du modele).
+    Does: hides all parts except target_body.
+    Depends on: Body.Visible, Transaction (Ansys.ACT.Mechanical).
+    Returns: nothing (side effect: changes the visibility of all bodies in the model).
     """
-    # Transaction(True) differe le rafraichissement pendant la boucle ; le rendu n'est de toute facon capture que plus tard, lors de l'export d'image.
+    # Transaction(True) defers the refresh during the loop; the render is captured later anyway, during the image export.
     target_id = target_body.ObjectId
     with Transaction(True):
         for body in all_bodies:
@@ -1394,9 +1394,9 @@ def show_only_body(target_body, all_bodies):
 
 def show_all_bodies(all_bodies):
     """
-    Fait : rend toutes les pieces visibles.
-    Depend de : Body.Visible, Transaction (Ansys.ACT.Mechanical).
-    Retourne : rien (effet de bord : restaure la visibilite de tous les corps du modele).
+    Does: makes all parts visible.
+    Depends on: Body.Visible, Transaction (Ansys.ACT.Mechanical).
+    Returns: nothing (side effect: restores the visibility of all bodies in the model).
     """
     with Transaction(True):
         for body in all_bodies:
@@ -1408,11 +1408,11 @@ def show_all_bodies(all_bodies):
 
 def get_body_mesh_counts(body):
     """
-    Fait : recupere le nombre de noeuds/elements d'UN corps.
-    Depend de : body.VisibleProperties (le panneau Details).
-    Retourne : tuple (node_count, element_count), chacun None si indisponible.
+    Does: retrieves the node/element count of ONE body.
+    Depends on: body.VisibleProperties (the Details panel).
+    Returns: tuple (node_count, element_count), each None if unavailable.
     """
-    # Lu via VisibleProperties (panneau Details) : MeshRegionById(body.ObjectId) s'est avere mal attribue (valeurs a 0 ou incoherentes entre pieces).
+    # Read via VisibleProperties (Details panel): MeshRegionById(body.ObjectId) turned out to be misattributed (values at 0 or inconsistent between parts).
     node_count = None
     element_count = None
     try:
@@ -1428,20 +1428,20 @@ def get_body_mesh_counts(body):
 
 def export_body_mesh_image(body, all_bodies, image_name):
     """
-    Fait : isole une piece (autres corps masques) et exporte une image de son maillage.
-    Depend de : show_only_body, Model.Mesh.AddFigure, export_current_view_image, show_all_bodies.
-    Retourne : str, le chemin du PNG genere.
+    Does: isolates a part (other bodies hidden) and exports an image of its mesh.
+    Depends on: show_only_body, Model.Mesh.AddFigure, export_current_view_image, show_all_bodies.
+    Returns: str, the path of the generated PNG.
     """
-    # ExtAPI.Graphics.ViewOptions.ShowMesh doit deja etre force a True par l'appelant (build_mesh_part_slides) : un seul forcage/reset pour tout un groupe de captures.
+    # ExtAPI.Graphics.ViewOptions.ShowMesh must already be forced to True by the caller (build_mesh_part_slides): a single force/reset for a whole group of captures.
     show_only_body(body, all_bodies)
     mesh = ExtAPI.DataModel.Project.Model.Mesh
     figure = mesh.AddFigure()
     figure.Activate()
-    # SetFit() est necessaire ici (contrairement au reste du projet, voir README) : show_only_body()
-    # masque completement les autres corps (Visible=False, pas de contexte transparent comme pour la
-    # geometrie), donc le seul contenu du viewport est la piece ciblee et SetFit() ne peut pas ecraser
-    # une autre vue utile -- sans cet appel, la camera garde le cadrage de l'assemblage complet et une
-    # petite piece isolee (ex: un boulon) apparait minuscule sur l'image exportee.
+    # SetFit() is necessary here (unlike the rest of the project, see README): show_only_body()
+    # completely hides the other bodies (Visible=False, no transparent context like for the
+    # geometry), so the only content in the viewport is the targeted part and SetFit() cannot overwrite
+    # another useful view -- without this call, the camera keeps the framing of the full assembly and a
+    # small isolated part (e.g. a bolt) appears tiny in the exported image.
     ExtAPI.Graphics.Camera.SetFit()
     image_path = export_current_view_image(image_name)
     show_all_bodies(all_bodies)
@@ -1450,9 +1450,9 @@ def export_body_mesh_image(body, all_bodies, image_name):
 
 def export_body_mesh_summary_csv(directory, body):
     """
-    Fait : exporte un tableau minimal de statistiques de maillage (ElementSize, Nodes, Elements) pour UNE piece.
-    Depend de : get_body_mesh_counts, Model.Mesh, _format_element_size (01_data_export.py) pour ElementSize, get_unique_file_path/to_csv_cell (00_constants.py), le module csv.
-    Retourne : str, le chemin du CSV genere.
+    Does: exports a minimal mesh statistics table (ElementSize, Nodes, Elements) for ONE part.
+    Depends on: get_body_mesh_counts, Model.Mesh, _format_element_size (01_data_export.py) for ElementSize, get_unique_file_path/to_csv_cell (00_constants.py), the csv module.
+    Returns: str, the path of the generated CSV.
     """
     mesh = Model.Mesh
     node_count, element_count = get_body_mesh_counts(body)
@@ -1476,16 +1476,16 @@ def export_body_mesh_summary_csv(directory, body):
 
 def add_mesh_multi_image_slide(report, image_paths, csv_paths):
     """
-    Fait : ajoute une slide LAYOUT_MESH_MULTI (jusqu'a 4 images + 4 tableaux) pour un groupe de pieces.
-    Depend de : LAYOUT_MESH_MULTI, MESH_MULTI_IMAGE_SHAPE_INDICES, MESH_MULTI_TABLE_SHAPE_INDICES, report.add_csv_table.
-    Retourne : PPT.Slide, la slide creee.
+    Does: adds a LAYOUT_MESH_MULTI slide (up to 4 images + 4 tables) for a group of parts.
+    Depends on: LAYOUT_MESH_MULTI, MESH_MULTI_IMAGE_SHAPE_INDICES, MESH_MULTI_TABLE_SHAPE_INDICES, report.add_csv_table.
+    Returns: PPT.Slide, the created slide.
     """
     layout = report.presentation.SlideMaster.CustomLayouts[LAYOUT_MESH_MULTI]
     slide = report.presentation.Slides.AddSlide(report.presentation.Slides.Count + 1, layout)
 
     slide.Shapes[1].TextFrame.TextRange.Text = "Mesh Details"
 
-    # Tri par position reelle (haut->bas, gauche->droite), pas par indice de shape, meme precaution que add_multi_step_image_slide.
+    # Sorted by actual position (top->bottom, left->right), not by shape index, same precaution as add_multi_step_image_slide.
     image_placeholders = [slide.Shapes[i] for i in MESH_MULTI_IMAGE_SHAPE_INDICES]
     image_placeholders.sort(key=lambda ph: (ph.Top, ph.Left))
 
@@ -1511,9 +1511,9 @@ def add_mesh_multi_image_slide(report, image_paths, csv_paths):
 
 def build_mesh_part_slides(report, row_configs, all_bodies, views):
     """
-    Fait : ajoute une ou plusieurs slides "mesh par piece isolee", en regroupant les pieces par MAX_MESH_MULTI_BODIES.
-    Depend de : apply_view_if_exists, export_body_mesh_image, export_body_mesh_summary_csv, add_mesh_multi_image_slide.
-    Retourne : rien (effet de bord : ajoute une ou plusieurs slides au rapport).
+    Does: adds one or more "mesh by isolated part" slides, grouping parts by MAX_MESH_MULTI_BODIES.
+    Depends on: apply_view_if_exists, export_body_mesh_image, export_body_mesh_summary_csv, add_mesh_multi_image_slide.
+    Returns: nothing (side effect: adds one or more slides to the report).
     """
     for start in range(0, len(row_configs), MAX_MESH_MULTI_BODIES):
         chunk = row_configs[start:start + MAX_MESH_MULTI_BODIES]
@@ -1547,42 +1547,42 @@ def build_mesh_part_slides(report, row_configs, all_bodies, views):
 
 class ContactRowConfig(object):
     """
-    Ligne de selection pour la slide Contact summary : juste le contact, rien a configurer (toutes les lignes cochees partagent UNE seule slide).
+    Selection row for the Contact summary slide: just the contact, nothing to configure (all checked rows share ONE single slide).
     """
 
     def __init__(self, contact_region):
         """
-        Fait : initialise la configuration d'une ligne Contact summary (rien a configurer).
-        Depend de : rien (affectations simples).
-        Retourne : rien (constructeur).
+        Does: initializes a Contact summary row's configuration (nothing to configure).
+        Depends on: nothing (simple assignments).
+        Returns: nothing (constructor).
         """
         self.obj = contact_region
-        self.configured = True  # pas de bouton "..." pour cette categorie : toujours "pret"
+        self.configured = True  # no "..." button for this category: always "ready"
 
 
 def build_contact_row_display_name(row_config):
     """
-    Fait : construit le texte affiche dans la liste pour une Contact Region.
-    Depend de : rien (lit row_config.obj.Name).
-    Retourne : str, le nom du contact.
+    Does: builds the text shown in the list for a Contact Region.
+    Depends on: nothing (reads row_config.obj.Name).
+    Returns: str, the contact's name.
     """
     return row_config.obj.Name
 
 
 def collect_contact_regions():
     """
-    Fait : liste toutes les Contact Region du modele.
-    Depend de : ExtAPI.DataModel.GetObjectsByType(ContactRegion).
-    Retourne : list, les objets Contact Region (dossier Connections).
+    Does: lists all Contact Regions in the model.
+    Depends on: ExtAPI.DataModel.GetObjectsByType(ContactRegion).
+    Returns: list, the Contact Region objects (Connections folder).
     """
     return list(ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.ContactRegion))
 
 
 def build_contact_summary_slide(report, row_configs):
     """
-    Fait : ajoute LA slide de resume des contacts, limitee aux contacts selectionnes.
-    Depend de : export_contacts_summary_csv (01_data_export.py), report.add_table_slide.
-    Retourne : rien (effet de bord : ajoute une slide au rapport).
+    Does: adds THE contacts summary slide, limited to the selected contacts.
+    Depends on: export_contacts_summary_csv (01_data_export.py), report.add_table_slide.
+    Returns: nothing (side effect: adds a slide to the report).
     """
     contact_list = [cfg.obj for cfg in row_configs]
     csv_path = export_contacts_summary_csv(CSV_EXPORT_FOLDER, contact_list)
@@ -1603,9 +1603,9 @@ CURVE_COLOR_OPTIONS = [
 
 def curve_color_label(color):
     """
-    Fait : trouve le libelle affiche pour une couleur de courbe.
-    Depend de : CURVE_COLOR_OPTIONS.
-    Retourne : str, le libelle correspondant, ou "Automatique" si color est None ou inconnue.
+    Does: finds the label shown for a curve color.
+    Depends on: CURVE_COLOR_OPTIONS.
+    Returns: str, the matching label, or "Automatic" if color is None or unknown.
     """
     if color is not None:
         for label, option_color in CURVE_COLOR_OPTIONS:
@@ -1616,9 +1616,9 @@ def curve_color_label(color):
 
 def curve_color_from_label(label):
     """
-    Fait : trouve la couleur associee a un libelle de CURVE_COLOR_OPTIONS.
-    Depend de : CURVE_COLOR_OPTIONS.
-    Retourne : Color ou None, la couleur correspondante (None pour "Automatique" ou libelle inconnu).
+    Does: finds the color associated with a label from CURVE_COLOR_OPTIONS.
+    Depends on: CURVE_COLOR_OPTIONS.
+    Returns: Color or None, the matching color (None for "Automatic" or an unknown label).
     """
     for option_label, option_color in CURVE_COLOR_OPTIONS:
         if option_label == label:
@@ -1628,17 +1628,17 @@ def curve_color_from_label(label):
 
 class SolutionInfoRowConfig(object):
     """
-    Configuration d'affichage pour un tracker de Solution Information : l'objet et les parametres du graphique (titre, axes, couleur), None = deduit du CSV.
+    Display configuration for a Solution Information tracker: the object and the chart parameters (title, axes, color), None = inferred from the CSV.
     """
 
     def __init__(self, tracker, analysis=None):
         """
-        Fait : initialise la configuration d'un tracker de Solution Information avec ses valeurs par defaut.
-        Depend de : rien (affectations simples).
-        Retourne : rien (constructeur).
+        Does: initializes a Solution Information tracker's configuration with its default values.
+        Depends on: nothing (simple assignments).
+        Returns: nothing (constructor).
         """
         self.obj = tracker
-        self.analysis = analysis  # voir SlideRowConfig.analysis / analysis_suffix
+        self.analysis = analysis  # see SlideRowConfig.analysis / analysis_suffix
         self.chart_title = None
         self.x_axis_label = None
         self.y_axis_label = None
@@ -1648,9 +1648,9 @@ class SolutionInfoRowConfig(object):
 
 def build_solution_info_row_display_name(row_config):
     """
-    Fait : construit le texte affiche dans la liste pour un tracker de Solution Information.
-    Depend de : analysis_suffix, row_config (chart_title, x_axis_label, y_axis_label, curve_color).
-    Retourne : str, le nom du tracker suivi des reglages de graphique choisis, separes par " | ".
+    Does: builds the text shown in the list for a Solution Information tracker.
+    Depends on: analysis_suffix, row_config (chart_title, x_axis_label, y_axis_label, curve_color).
+    Returns: str, the tracker's name followed by the chosen chart settings, separated by " | ".
     """
     parts = [row_config.obj.Name + analysis_suffix(row_config)]
     if row_config.chart_title:
@@ -1666,9 +1666,9 @@ def build_solution_info_row_display_name(row_config):
 
 def collect_solution_information_trackers(analysis):
     """
-    Fait : liste les trackers (enfants) de Solution Information pour une analyse.
-    Depend de : analysis.Solution.Children[0] (1er enfant de la branche Solution).
-    Retourne : list, les objets tracker, vide en cas d'erreur.
+    Does: lists the trackers (children) of Solution Information for an analysis.
+    Depends on: analysis.Solution.Children[0] (1st child of the Solution branch).
+    Returns: list, the tracker objects, empty on error.
     """
     try:
         solution_information = analysis.Solution.Children[0]
@@ -1681,9 +1681,9 @@ def collect_solution_information_trackers(analysis):
 
 def collect_solution_information_trackers_multi(analyses):
     """
-    Fait : liste les trackers de Solution Information de toutes les analyses fournies.
-    Depend de : collect_solution_information_trackers.
-    Retourne : list de tuples (obj, analysis).
+    Does: lists the Solution Information trackers of all given analyses.
+    Depends on: collect_solution_information_trackers.
+    Returns: list of tuples (obj, analysis).
     """
     pairs = []
     for analysis in analyses:
@@ -1694,9 +1694,9 @@ def collect_solution_information_trackers_multi(analyses):
 
 def build_single_solution_info_slide(report, cfg):
     """
-    Fait : construit la slide d'UN tracker de Solution Information, avec ses parametres de graphique eventuels.
-    Depend de : export_result_tabular_data, export_chart_image_from_csv (02_image_export.py), get_scoped_contact_region_name (04_slides.py), report.add_image_table_slide.
-    Retourne : rien (effet de bord : ajoute une slide au rapport, ou rien si aucune donnee exportable).
+    Does: builds the slide for ONE Solution Information tracker, with its optional chart parameters.
+    Depends on: export_result_tabular_data, export_chart_image_from_csv (02_image_export.py), get_scoped_contact_region_name (04_slides.py), report.add_image_table_slide.
+    Returns: nothing (side effect: adds a slide to the report, or nothing if no exportable data).
     """
     tracker = cfg.obj
     csv_path = None
@@ -1727,9 +1727,9 @@ def build_single_solution_info_slide(report, cfg):
 
 def build_solution_info_slides(report, row_configs):
     """
-    Fait : ajoute une slide pour chaque tracker de Solution Information selectionne.
-    Depend de : build_single_solution_info_slide.
-    Retourne : rien (effet de bord : ajoute une slide par tracker au rapport).
+    Does: adds a slide for each selected Solution Information tracker.
+    Depends on: build_single_solution_info_slide.
+    Returns: nothing (side effect: adds a slide per tracker to the report).
     """
     for cfg in row_configs:
         build_single_solution_info_slide(report, cfg)
@@ -1737,9 +1737,9 @@ def build_solution_info_slides(report, row_configs):
 
 def export_mesh_summary_csv(directory):
     """
-    Fait : exporte un tableau minimal des statistiques de maillage (ElementSize, Nodes, Elements).
-    Depend de : Model.Mesh, le module csv, _format_element_size (01_data_export.py) pour ElementSize.
-    Retourne : str, le chemin du CSV genere.
+    Does: exports a minimal mesh statistics table (ElementSize, Nodes, Elements).
+    Depends on: Model.Mesh, the csv module, _format_element_size (01_data_export.py) for ElementSize.
+    Returns: str, the path of the generated CSV.
     """
     mesh = Model.Mesh
     rows = [
@@ -1761,9 +1761,9 @@ def export_mesh_summary_csv(directory):
 
 def build_mesh_slide(report, use_full_table):
     """
-    Fait : ajoute la slide maillage (vue + tableau complet ou resume selon use_full_table).
-    Depend de : export_mesh_image, export_mesh_report_csv (01_data_export.py), export_mesh_summary_csv, report.add_image_table_slide.
-    Retourne : rien (effet de bord : ajoute une slide au rapport).
+    Does: adds the mesh slide (view + full table or summary depending on use_full_table).
+    Depends on: export_mesh_image, export_mesh_report_csv (01_data_export.py), export_mesh_summary_csv, report.add_image_table_slide.
+    Returns: nothing (side effect: adds a slide to the report).
     """
     img_path = export_mesh_image()
     if use_full_table:
@@ -1775,25 +1775,25 @@ def build_mesh_slide(report, use_full_table):
 
 class AnalysisContextRowConfig(object):
     """
-    Ligne de selection pour une slide de contexte (Analysis Parameters) : l'analyse elle-meme et une vue (View Manager) optionnelle.
+    Selection row for a context slide (Analysis Parameters): the analysis itself and an optional view (View Manager).
     """
 
     def __init__(self, analysis):
         """
-        Fait : initialise la configuration d'une ligne Contexte d'analyse (vue optionnelle).
-        Depend de : rien (affectations simples).
-        Retourne : rien (constructeur).
+        Does: initializes an Analysis Context row's configuration (optional view).
+        Depends on: nothing (simple assignments).
+        Returns: nothing (constructor).
         """
         self.obj = analysis
         self.view_name = None
-        self.configured = False  # passe a True des que le bouton "..." a ete valide (OK)
+        self.configured = False  # becomes True once the "..." button has been confirmed (OK)
 
 
 def build_analysis_context_row_display_name(row_config):
     """
-    Fait : construit le texte affiche dans la liste pour une analyse.
-    Depend de : rien (lit row_config.obj.Name/view_name).
-    Retourne : str, le nom de l'analyse, suivi de la vue choisie si definie.
+    Does: builds the text shown in the list for an analysis.
+    Depends on: nothing (reads row_config.obj.Name/view_name).
+    Returns: str, the analysis' name, followed by the chosen view if defined.
     """
     parts = [row_config.obj.Name]
     if row_config.view_name:
@@ -1803,9 +1803,9 @@ def build_analysis_context_row_display_name(row_config):
 
 def build_analysis_context_slides(report, row_configs, views):
     """
-    Fait : ajoute une slide de contexte (Analysis Parameters) pour chaque analyse selectionnee, avec sa vue configuree.
-    Depend de : apply_view_if_exists, create_analysis_parameters_slide (04_slides.py).
-    Retourne : rien (effet de bord : ajoute une slide par analyse au rapport).
+    Does: adds a context slide (Analysis Parameters) for each selected analysis, with its configured view.
+    Depends on: apply_view_if_exists, create_analysis_parameters_slide (04_slides.py).
+    Returns: nothing (side effect: adds a slide per analysis to the report).
     """
     for cfg in row_configs:
         apply_view_if_exists(cfg.view_name, views)
