@@ -29,7 +29,7 @@ def export_active_tabular_data(directory, filename, start_col=3):
         for line in rows:
             writer.writerow([to_csv_cell(cell) for cell in line])
 
-    print "CSV exporte : " + filepath
+    print "CSV exported: " + filepath
     return filepath
 
 
@@ -113,9 +113,9 @@ def export_contacts_summary_csv(directory, contact_list=None):
                     to_csv_cell(interface_treatment), to_csv_cell(offset_value),
                 ])
             except Exception as e:
-                print "Erreur sur contact {} : {}".format(contact.Name, str(e))
+                print "Error on contact {}: {}".format(contact.Name, str(e))
 
-    print "Export CSV termine : " + filepath
+    print "CSV export complete: " + filepath
     return filepath
 
 
@@ -156,16 +156,16 @@ def export_mesh_report_csv(directory):
             rows.append(["Statistics", "MeshMetricValueMax", max(metric_data)])
             rows.append(["Statistics", "MeshMetricValueAvg", sum(metric_data) / len(metric_data)])
     except Exception:
-        rows.append(["Statistics", "MeshMetricValues", "Non disponible"])
+        rows.append(["Statistics", "MeshMetricValues", "Not available"])
 
     filepath = os.path.join(directory, "mesh_report.csv")
     with open(filepath, "wb") as f:
         writer = csv.writer(f, delimiter=";")
-        writer.writerow(["Section", "Propriete", "Valeur"])
+        writer.writerow(["Section", "Property", "Value"])
         for row in rows:
             writer.writerow([to_csv_cell(v) for v in row])
 
-    print "Export CSV termine : " + filepath
+    print "CSV export complete: " + filepath
     return filepath
 
 
@@ -249,7 +249,7 @@ def export_materials_csv(directory):
             )
             f.write(to_csv_cell(line))
 
-    print "Export CSV termine : " + filepath
+    print "CSV export complete: " + filepath
     return filepath
 
 
@@ -336,7 +336,7 @@ def export_analysis_settings_csv(directory, analysis):
         except Exception:
             substep_counts.append(None)
 
-    header = ["Propriete"] + ["Loadcase {}".format(step) for step in range(1, num_steps + 1)]
+    header = ["Property"] + ["Loadcase {}".format(step) for step in range(1, num_steps + 1)]
     rows = [
         ["End time"] + end_times,
         ["Define by"] + define_bys,
@@ -351,7 +351,7 @@ def export_analysis_settings_csv(directory, analysis):
         for row in rows:
             writer.writerow([to_csv_cell(v) for v in row])
 
-    print "Export CSV termine : " + filepath
+    print "CSV export complete: " + filepath
     return filepath
 
 
@@ -380,9 +380,9 @@ def export_solution_info_csv(directory, solution, analysis_name):
     filepath = get_unique_file_path(directory, "SolutionInfo_" + safe_file_name(analysis_name), ".csv")
     with open(filepath, "wb") as f:
         writer = csv.writer(f, delimiter=";")
-        writer.writerow(["Propriete", "Valeur"])
+        writer.writerow(["Property", "Value"])
         for row in rows:
             writer.writerow([to_csv_cell(v) for v in row])
 
-    print "Export CSV termine : " + filepath
+    print "CSV export complete: " + filepath
     return filepath

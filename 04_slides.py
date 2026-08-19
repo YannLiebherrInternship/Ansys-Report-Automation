@@ -48,7 +48,7 @@ def create_bc_slide(report):
     """
     bc_list = ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.GenericBoundaryCondition)
     if not bc_list:
-        print "Aucune Boundary Condition : slide ignoree."
+        print "No Boundary Condition: slide skipped."
         return
     for bc in bc_list:
         img_path = export_object_image(bc, bc.Name)
@@ -65,7 +65,7 @@ def create_bp_slide(report):
     """
     bp_list = ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.BoltPretension)
     if not bp_list:
-        print "Aucune Bolt Pretension : slide ignoree."
+        print "No Bolt Pretension: slide skipped."
         return
     for bp in bp_list:
         img_path = export_object_image(bp, bp.Name)
@@ -92,19 +92,19 @@ def create_tool_children_slides(report, category, subtitle, include_table=False)
     """
     tools = ExtAPI.DataModel.GetObjectsByType(category)
     if not tools:
-        print "Aucun objet trouve pour : " + subtitle
+        print "No object found for: " + subtitle
         return
 
     for tool in tools:
         children = tool.Children
         if children is None or len(children) == 0:
-            print "Aucun enfant sous " + tool.Name + " : ignore."
+            print "No child under " + tool.Name + ": skipped."
             continue
         for child in children:
             try:
                 img_path = export_object_image(child, child.Name)
             except Exception as e:
-                print "Export image impossible pour {} : {}".format(child.Name, str(e))
+                print "Unable to export image for {}: {}".format(child.Name, str(e))
                 img_path = None
 
             csv_path = None
@@ -112,12 +112,12 @@ def create_tool_children_slides(report, category, subtitle, include_table=False)
                 try:
                     csv_path = export_result_tabular_data(CSV_EXPORT_FOLDER, child)
                 except Exception as e:
-                    print "Export CSV impossible pour {} : {}".format(child.Name, str(e))
+                    print "Unable to export CSV for {}: {}".format(child.Name, str(e))
 
             if img_path or csv_path:
                 report.add_image_table_slide(child.Name, subtitle, img_path=img_path, csv_path=csv_path)
             else:
-                print "Aucune donnee exportable pour " + child.Name + " : slide ignoree."
+                print "No exportable data for " + child.Name + ": slide skipped."
 
 
 def create_contact_tool_slide(report):
@@ -165,7 +165,7 @@ def create_solution_information_slide(report):
     children = solution_information.Children
 
     if children is None or len(children) == 0:
-        print "Aucun tracker sous Solution Information : slide ignoree."
+        print "No tracker under Solution Information: slide skipped."
         return
 
     for child in children:
@@ -173,14 +173,14 @@ def create_solution_information_slide(report):
         try:
             csv_path = export_result_tabular_data(CSV_EXPORT_FOLDER, child)
         except Exception as e:
-            print "Export CSV impossible pour {} : {}".format(child.Name, str(e))
+            print "Unable to export CSV for {}: {}".format(child.Name, str(e))
 
         img_path = None
         if csv_path:
             try:
                 img_path = export_chart_image_from_csv(csv_path, child.Name)
             except Exception as e:
-                print "Construction du graphique impossible pour {} : {}".format(child.Name, str(e))
+                print "Unable to build chart for {}: {}".format(child.Name, str(e))
 
         if img_path or csv_path:
             contact_region_name = get_scoped_contact_region_name(child)
@@ -192,7 +192,7 @@ def create_solution_information_slide(report):
             report.add_image_table_slide(title, "-- Solution Information --",
                                           img_path=img_path, csv_path=csv_path)
         else:
-            print "Aucune donnee exportable pour " + child.Name + " : slide ignoree."
+            print "No exportable data for " + child.Name + ": slide skipped."
 
 
 def get_all_simple_results():
@@ -230,7 +230,7 @@ def create_result_slide(report):
     analysis = ExtAPI.DataModel.Project.Model.Analyses[0]
     results = get_all_simple_results()
     if not results:
-        print "Aucun resultat simple : slide ignoree."
+        print "No simple result: slide skipped."
         return
     for result in results:
         img_path = export_solution_image(result)

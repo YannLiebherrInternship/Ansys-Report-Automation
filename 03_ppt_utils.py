@@ -16,10 +16,10 @@ def _build_working_copy_base_name():
     """
     Fait : construit un nom de base (sans extension), unique par jour.
     Depend de : datetime.date.today().
-    Retourne : str, ex. "generation_automatique_de_rapport_17072025".
+    Retourne : str, ex. "automatic_report_generation_17072025".
     """
     today = datetime.date.today()
-    return "generation_automatique_de_rapport_{:02d}{:02d}{:04d}".format(today.day, today.month, today.year)
+    return "automatic_report_generation_{:02d}{:02d}{:04d}".format(today.day, today.month, today.year)
 
 
 def rename_time_header_to_loadcase(data):
@@ -52,7 +52,7 @@ class PPTReportBuilder(object):
         self.working_copy_path = get_unique_file_path(
             REPORT_OUTPUT_FOLDER, _build_working_copy_base_name(), ".pptx")
         shutil.copyfile(template_path, self.working_copy_path)
-        print "Copie de travail du template ouverte : " + self.working_copy_path
+        print "Template working copy opened: " + self.working_copy_path
 
         self.app = PPT.ApplicationClass()
         # self.app.Visible = True est necessaire : une session laissee invisible s'est reveleee instable sur un rapport avec beaucoup de slides (COMException "Presentation.SlideMaster : Object does not exist" en cours de route, plus aucune slide ne peut alors etre ajoutee/sauvegardee). La fenetre se ferme normalement en fin de generation (voir close()).
@@ -87,14 +87,14 @@ class PPTReportBuilder(object):
                 slide.Shapes.AddPicture(img_path, Office.MsoTriState.msoFalse, Office.MsoTriState.msoTrue,
                                          coord.Left, coord.Top, coord.Width, coord.Height)
             except Exception as e:
-                print "Insertion d'image impossible ({}) : {}".format(img_path, str(e))
+                print "Unable to insert image ({}): {}".format(img_path, str(e))
 
         if csv_path:
             coord = self.presentation.SlideMaster.CustomLayouts[LAYOUT_IMAGE_TABLE].Shapes[1]
             try:
                 self.add_csv_table(slide, csv_path, coord.Left, coord.Top, coord.Width)
             except Exception as e:
-                print "Insertion de table impossible ({}) : {}".format(csv_path, str(e))
+                print "Unable to insert table ({}): {}".format(csv_path, str(e))
 
         return slide
 
@@ -112,7 +112,7 @@ class PPTReportBuilder(object):
         try:
             self.add_csv_table(slide, csv_path, coord.Left, coord.Top, coord.Width)
         except Exception as e:
-            print "Insertion de table impossible ({}) : {}".format(csv_path, str(e))
+            print "Unable to insert table ({}): {}".format(csv_path, str(e))
         return slide
 
     def add_analysis_context_slide(self, title, subtitle, img_path, settings_csv_path, solution_csv_path):
@@ -135,21 +135,21 @@ class PPTReportBuilder(object):
                 slide.Shapes.AddPicture(img_path, Office.MsoTriState.msoFalse, Office.MsoTriState.msoTrue,
                                          coord.Left, coord.Top, coord.Width, coord.Height)
             except Exception as e:
-                print "Insertion d'image impossible ({}) : {}".format(img_path, str(e))
+                print "Unable to insert image ({}): {}".format(img_path, str(e))
 
         if settings_csv_path:
             coord = self.presentation.SlideMaster.CustomLayouts[LAYOUT_IMAGE_TABLE].Shapes[1]
             try:
                 self.add_csv_table(slide, settings_csv_path, coord.Left, coord.Top, coord.Width)
             except Exception as e:
-                print "Insertion de table impossible ({}) : {}".format(settings_csv_path, str(e))
+                print "Unable to insert table ({}): {}".format(settings_csv_path, str(e))
 
         if solution_csv_path:
             coord = self.presentation.SlideMaster.CustomLayouts[LAYOUT_IMAGE_TABLE].Shapes[8]
             try:
                 self.add_csv_table(slide, solution_csv_path, coord.Left, coord.Top, coord.Width)
             except Exception as e:
-                print "Insertion de table impossible ({}) : {}".format(solution_csv_path, str(e))
+                print "Unable to insert table ({}): {}".format(solution_csv_path, str(e))
 
         return slide
 
@@ -167,7 +167,7 @@ class PPTReportBuilder(object):
                 data.append([cell.decode("utf-8") for cell in row])
 
         if not data:
-            print "CSV vide, aucune table inseree : " + csv_path
+            print "Empty CSV, no table inserted: " + csv_path
             return
 
         rename_time_header_to_loadcase(data)
@@ -176,9 +176,9 @@ class PPTReportBuilder(object):
         cols = len(data[0])
 
         if rows > MAX_TABLE_ROWS or cols > MAX_TABLE_COLUMNS:
-            print ("Le tableau depasse 50 lignes / 50 colonnes ({} lignes, {} colonnes) : il ne "
-                   "sera donc pas affiche sur PowerPoint mais est disponible au format csv a "
-                   "cette destination : {}").format(rows, cols, csv_path)
+            print ("The table exceeds 50 rows / 50 columns ({} rows, {} columns): it will "
+                   "therefore not be shown in PowerPoint but is available in csv format at "
+                   "this location: {}").format(rows, cols, csv_path)
             return
 
         table = slide.Shapes.AddTable(rows, cols, left, top, width).Table
@@ -220,7 +220,7 @@ class PPTReportBuilder(object):
         Retourne : rien (effet de bord : cree/ecrase output_path).
         """
         self.presentation.SaveAs(output_path)
-        print "Rapport enregistre : " + output_path
+        print "Report saved: " + output_path
 
     def close(self):
         """

@@ -77,7 +77,7 @@ def safe_file_name(name):
     Retourne : str, le nom nettoye, utilisable tel quel dans un chemin de fichier.
     """
     # Sans ce nettoyage, un nom Mechanical type "Part/Solid" cree un faux sous-dossier ("Mesh_Part\Solid.csv") et fait echouer l'ecriture.
-    return re.sub(r'[\\/:*?"<>|]', "_", name).strip() or "objet"
+    return re.sub(r'[\\/:*?"<>|]', "_", name).strip() or "object"
 
 
 def get_unique_file_path(folder, base_name, extension):
@@ -135,18 +135,18 @@ def get_folder_stats(folder_path):
 
 def format_folder_size(size_bytes):
     """
-    Fait : formate une taille en octets en chaine lisible (octets/Ko/Mo/Go).
+    Fait : formate une taille en octets en chaine lisible (bytes/KB/MB/GB).
     Depend de : rien (calcul pur).
-    Retourne : str, la taille formatee (ex : "12,4 Mo").
+    Retourne : str, la taille formatee (ex : "12.4 MB").
     """
     size = float(size_bytes)
-    for unit in ("octets", "Ko", "Mo"):
+    for unit in ("bytes", "KB", "MB"):
         if size < 1024.0:
-            if unit == "octets":
+            if unit == "bytes":
                 return "{} {}".format(int(size), unit)
-            return "{:.1f} {}".format(size, unit).replace(".", ",")
+            return "{:.1f} {}".format(size, unit)
         size /= 1024.0
-    return "{:.1f} Go".format(size).replace(".", ",")
+    return "{:.1f} GB".format(size)
 
 
 def clear_folder_contents(folder_path):
@@ -165,7 +165,7 @@ def clear_folder_contents(folder_path):
             else:
                 os.remove(path)
         except Exception as e:
-            print "Suppression impossible : {} ({})".format(path, str(e))
+            print "Unable to delete: {} ({})".format(path, str(e))
 
 
 def clean_cell_text(text):
@@ -207,14 +207,14 @@ ensure_folder_exists(EXPORT_3D_FOLDER)
 # on avertit seulement en console pour que l'utilisateur sache tout de suite pourquoi la
 # generation echouerait, sans bloquer le chargement des modules suivants.
 if not os.path.isfile(TEMPLATE_PATH):
-    print "ATTENTION : template PowerPoint introuvable a l'emplacement attendu : " + TEMPLATE_PATH
+    print "WARNING: PowerPoint template not found at the expected location: " + TEMPLATE_PATH
 
 # Meme logique pour le dossier des legendes (voir LEGEND_FOLDER ci-dessus) : plus cree
 # automatiquement, on avertit simplement si l'emplacement attendu dans "user_files" n'existe pas.
 if not os.path.isdir(LEGEND_FOLDER):
-    print "ATTENTION : dossier des legendes introuvable a l'emplacement attendu : " + LEGEND_FOLDER
+    print "WARNING: legend folder not found at the expected location: " + LEGEND_FOLDER
 
 # Meme logique pour le logo (voir LOGO_PATH ci-dessus) : absence non bloquante, juste un
 # avertissement (l'emplacement imgLogo dans le XAML reste alors simplement vide).
 if not os.path.isfile(LOGO_PATH):
-    print "ATTENTION : logo introuvable a l'emplacement attendu : " + LOGO_PATH
+    print "WARNING: logo not found at the expected location: " + LOGO_PATH

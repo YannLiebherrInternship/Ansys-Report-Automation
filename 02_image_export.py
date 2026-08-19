@@ -112,7 +112,7 @@ def export_object_image(obj, image_name):
             obj.Activate()  # restaure l'etat de l'arbre pour les appels suivants (ex: extraction du tabular data)
             return image_path
         except Exception as e:
-            print "AddFigure() a echoue pour {} ({}) : export direct utilise.".format(obj.Name, str(e))
+            print "AddFigure() failed for {} ({}): using direct export instead.".format(obj.Name, str(e))
 
     obj.Activate()
     return export_current_view_image(image_name)
@@ -171,7 +171,7 @@ def export_chart_image_from_csv(csv_path, image_name, chart_title=None, x_axis_l
     # 1ere colonne = axe X (Time/Step) et chaque colonne suivante = une courbe si le CSV a 2+ colonnes ; sinon le numero de ligne sert d'axe X.
     headers, rows = _read_chart_data(csv_path)
     if len(rows) < 2:
-        print "Pas assez de donnees numeriques pour tracer un graphique : " + csv_path
+        print "Not enough numeric data to plot a chart: " + csv_path
         return None
 
     num_columns = min(len(r) for r in rows)

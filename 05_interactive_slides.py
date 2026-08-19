@@ -14,7 +14,7 @@ def remove_stale_figures():
         with Transaction(True):
             DataModel.Remove(DataModel.GetObjectsByType(DataModelObjectCategory.Figure))
     except Exception as e:
-        print "Suppression des figures existantes impossible : " + str(e)
+        print "Unable to delete existing figures: " + str(e)
 
 
 # Colonne 2 (ViewOrientationType) corrigee suite a une verification visuelle dans Mechanical :
@@ -52,9 +52,9 @@ def create_basic_views():
                 cam.SetFit()
                 mvm.CreateView(name)
                 created.append(name)
-                print "Vue creee : " + name
+                print "View created: " + name
             except Exception as e:
-                print "Impossible de creer la vue {} : {}".format(name, str(e))
+                print "Unable to create view {}: {}".format(name, str(e))
 
     return created
 
@@ -69,10 +69,10 @@ def export_object_3d_view(obj, directory):
         obj.Activate()
         avz_path = get_unique_file_path(directory, safe_file_name(obj.Name), ".avz")
         ExtAPI.Graphics.ModelViewManager.Capture3DImage(avz_path)
-        print "Vue 3D exportee : " + avz_path
+        print "3D view exported: " + avz_path
         return avz_path
     except Exception as e:
-        print "Export 3D impossible pour {} : {}".format(obj.Name, str(e))
+        print "Unable to export 3D for {}: {}".format(obj.Name, str(e))
         return None
 
 
@@ -105,8 +105,8 @@ def export_all_3d_views(directory):
     return exported_count
 
 
-NO_VIEW_LABEL = "-- Vue courante --"
-NO_SECTION_LABEL = "-- Aucune coupe --"
+NO_VIEW_LABEL = "-- Current view --"
+NO_SECTION_LABEL = "-- No section --"
 
 
 class SlideRowConfig(object):
@@ -155,11 +155,11 @@ def build_row_display_name(row_config):
     """
     parts = [row_config.obj.Name + analysis_suffix(row_config)]
     if row_config.view_name:
-        parts.append("vue=" + row_config.view_name)
+        parts.append("view=" + row_config.view_name)
     if row_config.section_name:
-        parts.append("coupe=" + row_config.section_name)
+        parts.append("section=" + row_config.section_name)
     if row_config.selected_steps:
-        mode_label = "combine" if row_config.step_display_mode == "combined" else "individuel"
+        mode_label = "combined" if row_config.step_display_mode == "combined" else "individual"
         steps_label = ",".join(str(step) for step in row_config.selected_steps)
         parts.append("steps={} ({})".format(steps_label, mode_label))
     if row_config.deformation_scale_mode == "auto_x1":
@@ -169,11 +169,11 @@ def build_row_display_name(row_config):
     elif row_config.scale_factor and row_config.scale_factor != 1.0:
         parts.append("scale=x{}".format(row_config.scale_factor))
     if row_config.legend_name:
-        parts.append("legende=" + row_config.legend_name)
+        parts.append("legend=" + row_config.legend_name)
     if row_config.contour_view and row_config.contour_view != DEFAULT_CONTOUR_VIEW:
-        parts.append("affichage=" + contour_view_label(row_config.contour_view))
+        parts.append("display=" + contour_view_label(row_config.contour_view))
     if row_config.legend_orientation and row_config.legend_orientation != DEFAULT_LEGEND_ORIENTATION:
-        parts.append("legende_orientation=" + legend_orientation_label(row_config.legend_orientation))
+        parts.append("legend_orientation=" + legend_orientation_label(row_config.legend_orientation))
     if row_config.scoping_display and row_config.scoping_display != DEFAULT_SCOPING_DISPLAY:
         parts.append("scoping=" + scoping_display_label(row_config.scoping_display))
     return " | ".join(parts)
@@ -196,7 +196,7 @@ def collect_views():
             if node.tag == "ModelView":
                 views[node.attrib["Name"]] = index
     except Exception as e:
-        print "Vues du View Manager indisponibles : " + str(e)
+        print "View Manager views unavailable: " + str(e)
     return views
 
 
@@ -212,7 +212,7 @@ def collect_section_planes():
         for i in range(section_planes.Count):
             planes.append(section_planes[i])
     except Exception as e:
-        print "Plans de coupe indisponibles : " + str(e)
+        print "Section planes unavailable: " + str(e)
     return planes
 
 
@@ -241,7 +241,7 @@ def apply_view_if_exists(view_name, views):
     try:
         ExtAPI.Graphics.ModelViewManager.ApplyModelView(views[view_name])
     except Exception as e:
-        print "Application de la vue '{}' impossible : {}".format(view_name, str(e))
+        print "Unable to apply view '{}': {}".format(view_name, str(e))
 
 
 def apply_section_plane(section_planes, section_labels, section_name):
@@ -274,7 +274,7 @@ def disable_all_section_planes(section_planes):
 
 
 DEFORMATION_SCALE_MODE_OPTIONS = [
-    ("Manuel (valeur ci-dessous)", "manual"),
+    ("Manual (value below)", "manual"),
     ("Auto Scale x1", "auto_x1"),
     ("Auto Scale x2", "auto_x2"),
 ]
@@ -328,7 +328,7 @@ def apply_scale_factor(deformation_scale_mode, scale_factor):
             vo.ResultPreference.DeformationScaleMultiplier = float(scale_factor)
             ExtAPI.Graphics.Redraw()
     except Exception as e:
-        print "Application du scale factor impossible : " + str(e)
+        print "Unable to apply scale factor: " + str(e)
 
 
 def reset_scale_factor():
@@ -346,7 +346,7 @@ def reset_scale_factor():
         vo.ResultPreference.DeformationScaleMultiplier = 1
         ExtAPI.Graphics.Redraw()
     except Exception as e:
-        print "Reinitialisation du scale factor impossible : " + str(e)
+        print "Unable to reset scale factor: " + str(e)
 
 
 CONTOUR_VIEW_OPTIONS = [
@@ -401,7 +401,7 @@ def apply_contour_view(contour_view):
         # exportee juste apres reste sur l'ancien mode d'affichage.
         ExtAPI.Graphics.Redraw()
     except Exception as e:
-        print "Application du mode d'affichage '{}' impossible : {}".format(contour_view, str(e))
+        print "Unable to apply display mode '{}': {}".format(contour_view, str(e))
 
 
 def reset_contour_view():
@@ -414,8 +414,8 @@ def reset_contour_view():
 
 
 LEGEND_ORIENTATION_OPTIONS = [
-    ("Verticale (defaut)", "Vertical"),
-    ("Horizontale", "Horizontal"),
+    ("Vertical (default)", "Vertical"),
+    ("Horizontal", "Horizontal"),
 ]
 DEFAULT_LEGEND_ORIENTATION = "Vertical"
 
@@ -459,7 +459,7 @@ def apply_legend_orientation(legend_orientation):
         # exportee juste apres reste sur l'ancienne orientation.
         ExtAPI.Graphics.Redraw()
     except Exception as e:
-        print "Application de l'orientation de legende '{}' impossible : {}".format(legend_orientation, str(e))
+        print "Unable to apply legend orientation '{}': {}".format(legend_orientation, str(e))
 
 
 def reset_legend_orientation():
@@ -519,7 +519,7 @@ def apply_scoping_display(scoping_display):
         # exportee juste apres reste sur l'ancien mode d'affichage.
         ExtAPI.Graphics.Redraw()
     except Exception as e:
-        print "Application du mode de scoping '{}' impossible : {}".format(scoping_display, str(e))
+        print "Unable to apply scoping mode '{}': {}".format(scoping_display, str(e))
 
 
 def reset_scoping_display():
@@ -531,7 +531,7 @@ def reset_scoping_display():
     apply_scoping_display(DEFAULT_SCOPING_DISPLAY)
 
 
-NO_LEGEND_LABEL = "-- Legende automatique --"
+NO_LEGEND_LABEL = "-- Automatic legend --"
 
 
 def collect_legend_files():
@@ -571,18 +571,18 @@ def get_result_display_unit(result_obj, force_evaluate=True):
                 tokens = prop.StringValue.split()
                 if len(tokens) >= 2:
                     if force_evaluate:
-                        print "Unite detectee pour {} via '{}' ({}) : {}".format(
+                        print "Unit detected for {} via '{}' ({}): {}".format(
                             result_obj.Name, caption, prop.StringValue, tokens[-1])
                     return tokens[-1]
             except Exception:
                 pass
     except Exception as e:
         if force_evaluate:
-            print "Unite indisponible pour {} : {}".format(result_obj.Name, str(e))
+            print "Unit unavailable for {}: {}".format(result_obj.Name, str(e))
         return None
 
     if force_evaluate:
-        print "Aucune unite detectee pour {} (aucune propriete Minimum/Maximum/Average exploitable).".format(result_obj.Name)
+        print "No unit detected for {} (no usable Minimum/Maximum/Average property).".format(result_obj.Name)
     return None
 
 
@@ -596,7 +596,7 @@ def apply_legend_if_exists(legend_name, result_obj):
         return
     xml_path = os.path.join(LEGEND_FOLDER, legend_name + ".xml")
     if not os.path.exists(xml_path):
-        print "Legende introuvable : " + xml_path
+        print "Legend not found: " + xml_path
         return
 
     # ImportLegend/Reset comparent l'unite demandee a celle de l'objet ACTUELLEMENT ACTIF dans le viewport, pas a result_obj : sans cet Activate() explicite, l'unite comparee restait celle de la ligne precedente.
@@ -604,20 +604,20 @@ def apply_legend_if_exists(legend_name, result_obj):
         result_obj.Activate()
         ExtAPI.Graphics.Redraw()
     except Exception as e:
-        print "Activation de {} impossible avant application de la legende : {}".format(result_obj.Name, str(e))
+        print "Unable to activate {} before applying the legend: {}".format(result_obj.Name, str(e))
 
     # Tentative systematique meme si unit est None : laisse remonter l'erreur .NET reelle en console plutot que d'abandonner silencieusement.
     unit = get_result_display_unit(result_obj)
-    print "Legende '{}' sur {} : unite utilisee pour ImportLegend = {}".format(legend_name, result_obj.Name, unit)
+    print "Legend '{}' on {}: unit used for ImportLegend = {}".format(legend_name, result_obj.Name, unit)
 
     reset_legend()
 
     try:
         legend = ExtAPI.Graphics.ImportLegend(xml_path, unit)
         legend.CopyTo(Ansys.Mechanical.Graphics.Tools.CurrentLegendSettings())
-        print "Legende '{}' appliquee sur {} (unite={}).".format(legend_name, result_obj.Name, unit)
+        print "Legend '{}' applied on {} (unit={}).".format(legend_name, result_obj.Name, unit)
     except Exception as e:
-        print "Application de la legende '{}' impossible sur {} (unite={}) : {}".format(
+        print "Unable to apply legend '{}' on {} (unit={}): {}".format(
             legend_name, result_obj.Name, unit, str(e))
 
 
@@ -632,7 +632,7 @@ def reset_legend():
         Ansys.Mechanical.Graphics.Tools.CurrentLegendSettings().Reset()
         ExtAPI.Graphics.Redraw()
     except Exception as e:
-        print "Reinitialisation de la legende impossible : " + str(e)
+        print "Unable to reset legend: " + str(e)
 
 
 # Templates disponibles : 2, 3, 4, 6 et 8 steps ; 5, 7 steps (et au-dela de 8) retombent automatiquement sur le mode "slides individuelles".
@@ -678,7 +678,7 @@ def get_step_count(analysis):
     try:
         return int(analysis.AnalysisSettings.NumberOfSteps)
     except Exception as e:
-        print "Nombre de steps indisponible : " + str(e)
+        print "Step count unavailable: " + str(e)
         return 1
 
 
@@ -698,12 +698,12 @@ def _set_result_display_time(result_obj, display_time):
             method()
             break
         except Exception as e:
-            print "Evaluation ({}) impossible pour {} : {}".format(method_name, result_obj.Name, str(e))
+            print "Evaluation ({}) failed for {}: {}".format(method_name, result_obj.Name, str(e))
     try:
         ExtAPI.Graphics.Redraw()
         SWF.Application.DoEvents()
     except Exception as e:
-        print "Redraw impossible apres reevaluation de {} : {}".format(result_obj.Name, str(e))
+        print "Redraw failed after re-evaluating {}: {}".format(result_obj.Name, str(e))
 
 
 def evaluate_result_for_step(result_obj, step_number):
@@ -776,7 +776,7 @@ def capture_multi_result_cell_image(cfg, views, section_planes, section_labels):
         apply_legend_if_exists(cfg.legend_name, obj)
         image_path = export_solution_image(obj)
     except Exception as e:
-        print "Capture impossible pour {} : {}".format(obj.Name, str(e))
+        print "Unable to capture {}: {}".format(obj.Name, str(e))
     finally:
         disable_all_section_planes(section_planes)
         reset_scale_factor()
@@ -806,12 +806,12 @@ def build_multi_result_slide(report, template, cell_configs, views, section_plan
             titles.append(cfg.obj.Name)
 
     if not image_paths:
-        print "Aucune case configuree : slide combinee multi-resultats non generee."
+        print "No cell configured: combined multi-result slide not generated."
         return
 
-    title = "Resultats combines : " + ", ".join(titles)
+    title = "Combined results: " + ", ".join(titles)
     add_multi_step_image_slide(report.presentation, template, title, image_paths)
-    print "Slide combinee multi-resultats ajoutee ({} resultats).".format(len(image_paths))
+    print "Combined multi-result slide added ({} results).".format(len(image_paths))
 
 
 def build_step_based_result_slides(report, cfg, obj, subtitle, analysis):
@@ -833,21 +833,21 @@ def build_step_based_result_slides(report, cfg, obj, subtitle, analysis):
             image_paths = [export_result_image_for_step(obj, step) for step in steps]
             title = "{} - {} steps".format(display_name, len(steps))
             add_multi_step_image_slide(report.presentation, template, title, image_paths)
-            print "Slide combinee ({} steps) ajoutee pour {}.".format(len(steps), display_name)
+            print "Combined slide ({} steps) added for {}.".format(len(steps), display_name)
             return
 
         csv_path = None
         try:
             csv_path = export_result_tabular_data(CSV_EXPORT_FOLDER, obj)
         except Exception as e:
-            print "Export CSV impossible pour {} : {}".format(obj.Name, str(e))
+            print "Unable to export CSV for {}: {}".format(obj.Name, str(e))
 
         for step in steps:
             img_path = None
             try:
                 img_path = export_result_image_for_step(obj, step)
             except Exception as e:
-                print "Export image impossible pour {} (step {}) : {}".format(obj.Name, step, str(e))
+                print "Unable to export image for {} (step {}): {}".format(obj.Name, step, str(e))
             title = "{} - Step {}".format(display_name, step)
             report.add_image_table_slide(title, subtitle, img_path=img_path, csv_path=csv_path)
     finally:
@@ -914,7 +914,7 @@ def collect_analyses():
         try:
             analysis.AnalysisSettings.NumberOfSteps
         except Exception:
-            print "Analyse ignoree (Analysis Settings indisponible, ex: addin FEMFAT) : " + str(analysis.Name)
+            print "Analysis skipped (Analysis Settings unavailable, e.g. FEMFAT addin): " + str(analysis.Name)
             continue
         analyses.append(analysis)
     return analyses
@@ -1106,7 +1106,7 @@ def build_single_bc_slide(report, cfg, views, section_planes, section_labels):
         reset_contour_view()
         reset_legend_orientation()
         reset_scoping_display()
-        print "Slide BC impossible pour {} : {}".format(bc.Name, str(e))
+        print "Unable to build BC slide for {}: {}".format(bc.Name, str(e))
 
 
 def build_bc_slides(report, row_configs, views, section_planes, section_labels):
@@ -1149,7 +1149,7 @@ def build_single_bp_slide(report, cfg, views, section_planes, section_labels):
         reset_contour_view()
         reset_legend_orientation()
         reset_scoping_display()
-        print "Slide Bolt Pretension impossible pour {} : {}".format(bp.Name, str(e))
+        print "Unable to build Bolt Pretension slide for {}: {}".format(bp.Name, str(e))
 
 
 def build_bp_slides(report, row_configs, views, section_planes, section_labels):
@@ -1185,21 +1185,21 @@ def build_single_result_slide(report, cfg, subtitle, views, section_planes, sect
             try:
                 img_path = export_object_image(obj, obj.Name)
             except Exception as e:
-                print "Export image impossible pour {} : {}".format(obj.Name, str(e))
+                print "Unable to export image for {}: {}".format(obj.Name, str(e))
 
             csv_path = None
             try:
                 csv_path = export_result_tabular_data(CSV_EXPORT_FOLDER, obj)
             except Exception as e:
-                print "Export CSV impossible pour {} : {}".format(obj.Name, str(e))
+                print "Unable to export CSV for {}: {}".format(obj.Name, str(e))
 
             if img_path or csv_path:
                 report.add_image_table_slide(obj.Name + analysis_suffix(cfg), subtitle,
                                               img_path=img_path, csv_path=csv_path)
             else:
-                print "Aucune donnee exportable pour " + obj.Name + " : slide ignoree."
+                print "No exportable data for " + obj.Name + ": slide skipped."
     except Exception as e:
-        print "Slide resultat impossible pour {} : {}".format(obj.Name, str(e))
+        print "Unable to build result slide for {}: {}".format(obj.Name, str(e))
     finally:
         disable_all_section_planes(section_planes)
         reset_scale_factor()
@@ -1247,10 +1247,10 @@ def build_geometry_row_display_name(row_config):
     """
     parts = [row_config.obj.Name]
     if row_config.view_name:
-        parts.append("vue=" + row_config.view_name)
+        parts.append("view=" + row_config.view_name)
     if row_config.section_name:
-        parts.append("coupe=" + row_config.section_name)
-    parts.append("contexte={}%".format(row_config.context_opacity_percent))
+        parts.append("section=" + row_config.section_name)
+    parts.append("context={}%".format(row_config.context_opacity_percent))
     return " | ".join(parts)
 
 
@@ -1333,7 +1333,7 @@ def build_single_geometry_part_slide(report, cfg, all_bodies, views, section_pla
         img_path = export_geometry_part_image(body, all_bodies, cfg.context_opacity_percent)
         report.add_image_table_slide(body.Name, "-- Geometry --", img_path=img_path, csv_path=None)
     except Exception as e:
-        print "Slide geometrie impossible pour {} : {}".format(body.Name, str(e))
+        print "Unable to build geometry slide for {}: {}".format(body.Name, str(e))
     finally:
         disable_all_section_planes(section_planes)
 
@@ -1372,7 +1372,7 @@ def build_mesh_part_row_display_name(row_config):
     """
     parts = [row_config.obj.Name]
     if row_config.view_name:
-        parts.append("vue=" + row_config.view_name)
+        parts.append("view=" + row_config.view_name)
     return " | ".join(parts)
 
 
@@ -1422,7 +1422,7 @@ def get_body_mesh_counts(body):
             elif prop.Name == "Elements":
                 element_count = prop.StringValue
     except Exception as e:
-        print "Comptage noeuds/elements impossible pour {} : {}".format(body.Name, str(e))
+        print "Unable to count nodes/elements for {}: {}".format(body.Name, str(e))
     return node_count, element_count
 
 
@@ -1466,11 +1466,11 @@ def export_body_mesh_summary_csv(directory, body):
     filepath = get_unique_file_path(directory, "Mesh_" + safe_file_name(body.Name), ".csv")
     with open(filepath, "wb") as f:
         writer = csv.writer(f, delimiter=";")
-        writer.writerow(["Propriete", "Valeur"])
+        writer.writerow(["Property", "Value"])
         for row in rows:
             writer.writerow([to_csv_cell(v) for v in row])
 
-    print "Export CSV termine : " + filepath
+    print "CSV export complete: " + filepath
     return filepath
 
 
@@ -1504,7 +1504,7 @@ def add_mesh_multi_image_slide(report, image_paths, csv_paths):
             try:
                 report.add_csv_table(slide, csv_paths[i], ph.Left, ph.Top, ph.Width)
             except Exception as e:
-                print "Insertion de table impossible ({}) : {}".format(csv_paths[i], str(e))
+                print "Unable to insert table ({}): {}".format(csv_paths[i], str(e))
 
     return slide
 
@@ -1527,7 +1527,7 @@ def build_mesh_part_slides(report, row_configs, all_bodies, views):
                     apply_view_if_exists(cfg.view_name, views)
                     image_paths.append(export_body_mesh_image(body, all_bodies, "Mesh_" + safe_file_name(body.Name)))
                 except Exception as e:
-                    print "Export image impossible pour {} : {}".format(body.Name, str(e))
+                    print "Unable to export image for {}: {}".format(body.Name, str(e))
                     image_paths.append(None)
         finally:
             ExtAPI.Graphics.ViewOptions.ShowMesh = False
@@ -1538,11 +1538,11 @@ def build_mesh_part_slides(report, row_configs, all_bodies, views):
             try:
                 csv_paths.append(export_body_mesh_summary_csv(CSV_EXPORT_FOLDER, body))
             except Exception as e:
-                print "Export CSV impossible pour {} : {}".format(body.Name, str(e))
+                print "Unable to export CSV for {}: {}".format(body.Name, str(e))
                 csv_paths.append(None)
 
         add_mesh_multi_image_slide(report, image_paths, csv_paths)
-        print "Slide Mesh multi-image ajoutee ({} piece(s)).".format(len(chunk))
+        print "Mesh multi-image slide added ({} part(s)).".format(len(chunk))
 
 
 class ContactRowConfig(object):
@@ -1590,14 +1590,14 @@ def build_contact_summary_slide(report, row_configs):
 
 
 CURVE_COLOR_OPTIONS = [
-    ("Automatique", None),
-    ("Rouge", Color.IndianRed),
-    ("Bleu", Color.SteelBlue),
-    ("Vert", Color.SeaGreen),
+    ("Automatic", None),
+    ("Red", Color.IndianRed),
+    ("Blue", Color.SteelBlue),
+    ("Green", Color.SeaGreen),
     ("Orange", Color.DarkOrange),
-    ("Violet", Color.MediumPurple),
-    ("Noir", Color.Black),
-    ("Gris", Color.Gray),
+    ("Purple", Color.MediumPurple),
+    ("Black", Color.Black),
+    ("Gray", Color.Gray),
 ]
 
 
@@ -1654,13 +1654,13 @@ def build_solution_info_row_display_name(row_config):
     """
     parts = [row_config.obj.Name + analysis_suffix(row_config)]
     if row_config.chart_title:
-        parts.append("titre=" + row_config.chart_title)
+        parts.append("title=" + row_config.chart_title)
     if row_config.x_axis_label:
         parts.append("x=" + row_config.x_axis_label)
     if row_config.y_axis_label:
         parts.append("y=" + row_config.y_axis_label)
     if row_config.curve_color is not None:
-        parts.append("couleur=" + curve_color_label(row_config.curve_color))
+        parts.append("color=" + curve_color_label(row_config.curve_color))
     return " | ".join(parts)
 
 
@@ -1675,7 +1675,7 @@ def collect_solution_information_trackers(analysis):
         children = solution_information.Children
         return list(children) if children else []
     except Exception as e:
-        print "Solution Information indisponible : " + str(e)
+        print "Solution Information unavailable: " + str(e)
         return []
 
 
@@ -1703,7 +1703,7 @@ def build_single_solution_info_slide(report, cfg):
     try:
         csv_path = export_result_tabular_data(CSV_EXPORT_FOLDER, tracker)
     except Exception as e:
-        print "Export CSV impossible pour {} : {}".format(tracker.Name, str(e))
+        print "Unable to export CSV for {}: {}".format(tracker.Name, str(e))
 
     img_path = None
     if csv_path:
@@ -1713,7 +1713,7 @@ def build_single_solution_info_slide(report, cfg):
                 y_axis_label=cfg.y_axis_label, curve_color=cfg.curve_color
             )
         except Exception as e:
-            print "Construction du graphique impossible pour {} : {}".format(tracker.Name, str(e))
+            print "Unable to build chart for {}: {}".format(tracker.Name, str(e))
 
     if img_path or csv_path:
         contact_region_name = get_scoped_contact_region_name(tracker)
@@ -1722,7 +1722,7 @@ def build_single_solution_info_slide(report, cfg):
             title = "{} - {}".format(title, contact_region_name)
         report.add_image_table_slide(title, "-- Solution Information --", img_path=img_path, csv_path=csv_path)
     else:
-        print "Aucune donnee exportable pour " + tracker.Name + " : slide ignoree."
+        print "No exportable data for " + tracker.Name + ": slide skipped."
 
 
 def build_solution_info_slides(report, row_configs):
@@ -1751,11 +1751,11 @@ def export_mesh_summary_csv(directory):
     filepath = os.path.join(directory, "mesh_summary.csv")
     with open(filepath, "wb") as f:
         writer = csv.writer(f, delimiter=";")
-        writer.writerow(["Propriete", "Valeur"])
+        writer.writerow(["Property", "Value"])
         for row in rows:
             writer.writerow([to_csv_cell(v) for v in row])
 
-    print "Export CSV termine : " + filepath
+    print "CSV export complete: " + filepath
     return filepath
 
 
@@ -1797,7 +1797,7 @@ def build_analysis_context_row_display_name(row_config):
     """
     parts = [row_config.obj.Name]
     if row_config.view_name:
-        parts.append("vue=" + row_config.view_name)
+        parts.append("view=" + row_config.view_name)
     return " | ".join(parts)
 
 

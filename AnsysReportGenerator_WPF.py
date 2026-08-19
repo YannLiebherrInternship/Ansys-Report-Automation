@@ -63,24 +63,24 @@ try:
     _ansys_project_directory = ExtAPI.DataModel.Project.ProjectDirectory
 except Exception as _ex:
     raise RuntimeError(
-        "Impossible de lire ExtAPI.DataModel.Project.ProjectDirectory : {}. Le projet Ansys "
-        "a-t-il ete enregistre au moins une fois ?".format(str(_ex))
+        "Unable to read ExtAPI.DataModel.Project.ProjectDirectory: {}. Has the Ansys "
+        "project been saved at least once?".format(str(_ex))
     )
 
 if not _ansys_project_directory:
     raise RuntimeError(
-        "ExtAPI.DataModel.Project.ProjectDirectory est vide : enregistrez le projet Ansys avant "
-        "de lancer ce script."
+        "ExtAPI.DataModel.Project.ProjectDirectory is empty: save the Ansys project before "
+        "running this script."
     )
 
 PROJECT_DIR = os.path.join(_ansys_project_directory, "Report Generator")
 
 if not os.path.isfile(os.path.join(PROJECT_DIR, "00_constants.py")):
     raise IOError(
-        "Dossier 'Report Generator' introuvable ou incomplet : {}. Verifiez qu'il existe bien a "
-        "cote du dossier 'user_files' du projet (ExtAPI.DataModel.Project.ProjectDirectory), et "
-        "qu'il contient AnsysReportGenerator_WPF.py/.xaml, les modules 00_constants.py -> "
-        "05_interactive_slides.py et le template PowerPoint.".format(PROJECT_DIR)
+        "'Report Generator' folder not found or incomplete: {}. Check that it exists next "
+        "to the project's 'user_files' folder (ExtAPI.DataModel.Project.ProjectDirectory), and "
+        "that it contains AnsysReportGenerator_WPF.py/.xaml, the modules 00_constants.py -> "
+        "05_interactive_slides.py, and the PowerPoint template.".format(PROJECT_DIR)
     )
 
 _MODULE_FILES = [
@@ -96,13 +96,13 @@ for _module_file in _MODULE_FILES:
     _module_path = os.path.join(PROJECT_DIR, _module_file)
     if not os.path.exists(_module_path):
         raise IOError(
-            "Module introuvable : {}. Verifiez PROJECT_DIR en haut de "
+            "Module not found: {}. Check PROJECT_DIR at the top of "
             "AnsysReportGenerator_WPF.py.".format(_module_path)
         )
-    print "Chargement du module : " + _module_path
+    print "Loading module: " + _module_path
     execfile(_module_path)
 
-print "Tous les modules sont charges."
+print "All modules loaded."
 
 
 # --- Chemins de fichiers modifiables depuis l'onglet "Fichiers" ---
@@ -156,9 +156,9 @@ def _general_slide_status_text(row_config):
     Depend de : row_config.configured/view_name.
     Retourne : str, ex. "a configurer - vue courante" ou "configure - vue=Vue ISO".
     """
-    state = "configure" if row_config.configured else "a configurer"
-    vue = "vue={}".format(row_config.view_name) if row_config.view_name else "vue courante"
-    return "{} - {}".format(state, vue)
+    state = "configured" if row_config.configured else "to configure"
+    view = "view={}".format(row_config.view_name) if row_config.view_name else "current view"
+    return "{} - {}".format(state, view)
 
 
 # --- Filtre par type de contact (section "Contacts a afficher") ---
@@ -185,7 +185,7 @@ def _classify_contact_name(name):
 
 # --- Champs de recherche : texte indicatif grise ---
 
-SEARCH_PLACEHOLDER = "Rechercher..."
+SEARCH_PLACEHOLDER = "Search..."
 SEARCH_PLACEHOLDER_BRUSH = SolidColorBrush(WpfColor.FromRgb(0x79, 0x7E, 0x8A))  # meme gris que TextMutedBrush (xaml)
 SEARCH_TEXT_BRUSH = SolidColorBrush(WpfColor.FromRgb(0x00, 0x00, 0x00))  # meme noir que TextPrimaryBrush (xaml)
 SEARCH_BOX_DEFAULT_BACKGROUND = SolidColorBrush(WpfColor.FromRgb(0xFA, 0xFB, 0xFC))
@@ -372,7 +372,7 @@ def _build_row_config_fields(target, root, row_config, views, section_plane_labe
     Depend de : _make_field_label, get_result_display_unit, CONTOUR_VIEW_OPTIONS/LEGEND_ORIENTATION_OPTIONS/SCOPING_DISPLAY_OPTIONS.
     Retourne : rien (pose sur target : cmb_view/cmb_section/cmb_legend/cmb_contour_view/cmb_legend_orientation/cmb_scoping_display/txt_scale).
     """
-    root.Children.Add(_make_field_label("Vue (View Manager) :"))
+    root.Children.Add(_make_field_label("View (View Manager):"))
     target.cmb_view = ComboBox()
     target.cmb_view.Margin = Thickness(0, 4, 0, 12)
     target.cmb_view.Items.Add(NO_VIEW_LABEL)
@@ -384,7 +384,7 @@ def _build_row_config_fields(target, root, row_config, views, section_plane_labe
         target.cmb_view.SelectedIndex = 0
     root.Children.Add(target.cmb_view)
 
-    root.Children.Add(_make_field_label("Coupe (Section Plane) :"))
+    root.Children.Add(_make_field_label("Section (Section Plane):"))
     target.cmb_section = ComboBox()
     target.cmb_section.Margin = Thickness(0, 4, 0, 12)
     target.cmb_section.Items.Add(NO_SECTION_LABEL)
@@ -403,14 +403,14 @@ def _build_row_config_fields(target, root, row_config, views, section_plane_labe
     # de la legende (apply_legend_if_exists) reevalue toujours a fond le resultat.
     detected_unit = get_result_display_unit(row_config.obj, force_evaluate=False)
     lbl_unit = TextBlock()
-    lbl_unit.Text = "Unite detectee pour ImportLegend : " + (detected_unit if detected_unit else "aucune")
+    lbl_unit.Text = "Unit detected for ImportLegend: " + (detected_unit if detected_unit else "none")
     lbl_unit.Foreground = _shared_resources["DiagnosticLabelBrush"]
     lbl_unit.FontWeight = FontWeights.Bold
     lbl_unit.TextWrapping = TextWrapping.Wrap
     lbl_unit.Margin = Thickness(0, 0, 0, 6)
     root.Children.Add(lbl_unit)
 
-    root.Children.Add(_make_field_label("Legende :"))
+    root.Children.Add(_make_field_label("Legend:"))
     target.cmb_legend = ComboBox()
     target.cmb_legend.Margin = Thickness(0, 4, 0, 12)
     target.cmb_legend.Items.Add(NO_LEGEND_LABEL)
@@ -422,7 +422,7 @@ def _build_row_config_fields(target, root, row_config, views, section_plane_labe
         target.cmb_legend.SelectedIndex = 0
     root.Children.Add(target.cmb_legend)
 
-    root.Children.Add(_make_field_label("Affichage des couleurs (Contour View) :"))
+    root.Children.Add(_make_field_label("Color display (Contour View):"))
     target.cmb_contour_view = ComboBox()
     target.cmb_contour_view.Margin = Thickness(0, 4, 0, 12)
     for label, value in CONTOUR_VIEW_OPTIONS:
@@ -430,7 +430,7 @@ def _build_row_config_fields(target, root, row_config, views, section_plane_labe
     target.cmb_contour_view.SelectedItem = contour_view_label(row_config.contour_view)
     root.Children.Add(target.cmb_contour_view)
 
-    root.Children.Add(_make_field_label("Orientation de la legende :"))
+    root.Children.Add(_make_field_label("Legend orientation:"))
     target.cmb_legend_orientation = ComboBox()
     target.cmb_legend_orientation.Margin = Thickness(0, 4, 0, 12)
     for label, value in LEGEND_ORIENTATION_OPTIONS:
@@ -438,7 +438,7 @@ def _build_row_config_fields(target, root, row_config, views, section_plane_labe
     target.cmb_legend_orientation.SelectedItem = legend_orientation_label(row_config.legend_orientation)
     root.Children.Add(target.cmb_legend_orientation)
 
-    root.Children.Add(_make_field_label("Affichage du scoping :"))
+    root.Children.Add(_make_field_label("Scoping display:"))
     target.cmb_scoping_display = ComboBox()
     target.cmb_scoping_display.Margin = Thickness(0, 4, 0, 12)
     for label, value in SCOPING_DISPLAY_OPTIONS:
@@ -446,7 +446,7 @@ def _build_row_config_fields(target, root, row_config, views, section_plane_labe
     target.cmb_scoping_display.SelectedItem = scoping_display_label(row_config.scoping_display)
     root.Children.Add(target.cmb_scoping_display)
 
-    root.Children.Add(_make_field_label("Echelle de deformation :"))
+    root.Children.Add(_make_field_label("Deformation scale:"))
     target.cmb_deformation_scale_mode = ComboBox()
     target.cmb_deformation_scale_mode.Margin = Thickness(0, 4, 0, 12)
     for label, value in DEFORMATION_SCALE_MODE_OPTIONS:
@@ -454,7 +454,7 @@ def _build_row_config_fields(target, root, row_config, views, section_plane_labe
     target.cmb_deformation_scale_mode.SelectedItem = deformation_scale_mode_label(row_config.deformation_scale_mode)
     root.Children.Add(target.cmb_deformation_scale_mode)
 
-    root.Children.Add(_make_field_label("Scale factor deformation (mode Manuel uniquement, defaut = 1) :"))
+    root.Children.Add(_make_field_label("Deformation scale factor (Manual mode only, default = 1):"))
     target.txt_scale = _themed_textbox()
     target.txt_scale.Width = 100
     target.txt_scale.HorizontalAlignment = HorizontalAlignment.Left
@@ -494,12 +494,12 @@ def _apply_row_config_fields(target, row_config):
         try:
             scale_value = float(target.txt_scale.Text.strip().replace(",", "."))
             if scale_value <= 0:
-                raise ValueError("Le scale factor doit etre positif.")
+                raise ValueError("Scale factor must be positive.")
             row_config.scale_factor = scale_value
         except ValueError:
             row_config.scale_factor = 1.0
-            MessageBox.Show("Valeur de scale factor invalide : la valeur par defaut (1) a ete appliquee.",
-                             "Scale factor invalide", MessageBoxButton.OK, MessageBoxImage.Warning)
+            MessageBox.Show("Invalid scale factor value: the default value (1) has been applied.",
+                             "Invalid scale factor", MessageBoxButton.OK, MessageBoxImage.Warning)
 
 
 def _build_steps_section_fields(target, root, row_config, step_count):
@@ -519,7 +519,7 @@ def _build_steps_section_fields(target, root, row_config, step_count):
     group.Child = panel
 
     lbl_info = TextBlock()
-    lbl_info.Text = "Loadcase disponible : {}".format(step_count)
+    lbl_info.Text = "Available loadcases: {}".format(step_count)
     lbl_info.FontWeight = FontWeights.SemiBold
     lbl_info.Margin = Thickness(0, 0, 0, 6)
     panel.Children.Add(lbl_info)
@@ -539,7 +539,7 @@ def _build_steps_section_fields(target, root, row_config, step_count):
     panel.Children.Add(wrap)
 
     lbl_hint = TextBlock()
-    lbl_hint.Text = "(aucun coche = etat actuel)"
+    lbl_hint.Text = "(none checked = current state)"
     lbl_hint.FontSize = 11
     lbl_hint.Foreground = SEARCH_PLACEHOLDER_BRUSH
     lbl_hint.Margin = Thickness(0, 6, 0, 2)
@@ -558,14 +558,14 @@ def _build_steps_section_fields(target, root, row_config, step_count):
             cb.IsChecked = False
 
     btn_select_all_steps = _themed_button()
-    btn_select_all_steps.Content = "Tout selectionner"
+    btn_select_all_steps.Content = "Select all"
     btn_select_all_steps.Padding = Thickness(8, 2, 8, 2)
     btn_select_all_steps.FontSize = 11
     btn_select_all_steps.Click += _on_select_all_steps
     steps_buttons.Children.Add(btn_select_all_steps)
 
     btn_deselect_all_steps = _themed_button()
-    btn_deselect_all_steps.Content = "Deselectionner"
+    btn_deselect_all_steps.Content = "Deselect all"
     btn_deselect_all_steps.Padding = Thickness(8, 2, 8, 2)
     btn_deselect_all_steps.FontSize = 11
     btn_deselect_all_steps.Margin = Thickness(6, 0, 0, 0)
@@ -575,14 +575,14 @@ def _build_steps_section_fields(target, root, row_config, step_count):
     panel.Children.Add(steps_buttons)
 
     target.radio_individual = RadioButton()
-    target.radio_individual.Content = "Slides individuelles (1 par step)"
+    target.radio_individual.Content = "Individual slides (1 per step)"
     target.radio_individual.GroupName = "StepDisplayMode"
     target.radio_individual.IsChecked = (row_config.step_display_mode != "combined")
     target.radio_individual.Margin = Thickness(0, 0, 0, 2)
     panel.Children.Add(target.radio_individual)
 
     target.radio_combined = RadioButton()
-    target.radio_combined.Content = "Slide combinee (si template disponible)"
+    target.radio_combined.Content = "Combined slide (if template available)"
     target.radio_combined.GroupName = "StepDisplayMode"
     target.radio_combined.IsChecked = (row_config.step_display_mode == "combined")
     panel.Children.Add(target.radio_combined)
@@ -608,9 +608,9 @@ def _apply_steps_section_fields(target, row_config):
             row_config.step_display_mode = "individual"
             supported = ", ".join(str(n) for n in sorted(MULTI_STEP_SLIDE_TEMPLATES.keys()))
             MessageBox.Show(
-                "Aucun template de slide combinee n'existe pour {} step(s) (nombres supportes : {}). "
-                "Des slides individuelles seront generees a la place.".format(len(checked_steps), supported),
-                "Mode combine indisponible", MessageBoxButton.OK, MessageBoxImage.Warning
+                "No combined slide template exists for {} step(s) (supported counts: {}). "
+                "Individual slides will be generated instead.".format(len(checked_steps), supported),
+                "Combined mode unavailable", MessageBoxButton.OK, MessageBoxImage.Warning
             )
     else:
         row_config.step_display_mode = "individual"
@@ -624,7 +624,7 @@ def _build_geometry_part_fields(target, root, row_config, views, section_plane_l
     Depend de : _make_field_label.
     Retourne : rien (pose sur target : cmb_view/cmb_section/slider_opacity/lbl_opacity_value).
     """
-    root.Children.Add(_make_field_label("Vue (View Manager) :"))
+    root.Children.Add(_make_field_label("View (View Manager):"))
     target.cmb_view = ComboBox()
     target.cmb_view.Margin = Thickness(0, 4, 0, 12)
     target.cmb_view.Items.Add(NO_VIEW_LABEL)
@@ -636,7 +636,7 @@ def _build_geometry_part_fields(target, root, row_config, views, section_plane_l
         target.cmb_view.SelectedIndex = 0
     root.Children.Add(target.cmb_view)
 
-    root.Children.Add(_make_field_label("Coupe (Section Plane) :"))
+    root.Children.Add(_make_field_label("Section (Section Plane):"))
     target.cmb_section = ComboBox()
     target.cmb_section.Margin = Thickness(0, 4, 0, 12)
     target.cmb_section.Items.Add(NO_SECTION_LABEL)
@@ -648,7 +648,7 @@ def _build_geometry_part_fields(target, root, row_config, views, section_plane_l
         target.cmb_section.SelectedIndex = 0
     root.Children.Add(target.cmb_section)
 
-    root.Children.Add(_make_field_label("Opacite du contexte (autres pieces) :"))
+    root.Children.Add(_make_field_label("Context opacity (other parts):"))
 
     opacity_row = StackPanel()
     opacity_row.Orientation = Orientation.Horizontal
@@ -701,7 +701,7 @@ def _build_mesh_part_fields(target, root, row_config, views):
     Depend de : _make_field_label.
     Retourne : rien (pose sur target : cmb_view).
     """
-    root.Children.Add(_make_field_label("Vue (View Manager) :"))
+    root.Children.Add(_make_field_label("View (View Manager):"))
     target.cmb_view = ComboBox()
     target.cmb_view.Margin = Thickness(0, 4, 0, 12)
     target.cmb_view.Items.Add(NO_VIEW_LABEL)
@@ -732,25 +732,25 @@ def _build_solution_info_fields(target, root, row_config):
     Depend de : _make_field_label, _themed_textbox, CURVE_COLOR_OPTIONS, curve_color_label.
     Retourne : rien (pose sur target : txt_title/txt_x_label/txt_y_label/cmb_color).
     """
-    root.Children.Add(_make_field_label("Titre du graphique (vide = nom du tracker) :"))
+    root.Children.Add(_make_field_label("Chart title (empty = tracker name):"))
     target.txt_title = _themed_textbox()
     target.txt_title.Margin = Thickness(0, 4, 0, 12)
     target.txt_title.Text = row_config.chart_title or ""
     root.Children.Add(target.txt_title)
 
-    root.Children.Add(_make_field_label("Nom de l'axe X (vide = deduit du CSV) :"))
+    root.Children.Add(_make_field_label("X axis name (empty = inferred from CSV):"))
     target.txt_x_label = _themed_textbox()
     target.txt_x_label.Margin = Thickness(0, 4, 0, 12)
     target.txt_x_label.Text = row_config.x_axis_label or ""
     root.Children.Add(target.txt_x_label)
 
-    root.Children.Add(_make_field_label("Nom de l'axe Y (vide = deduit du CSV, courbe unique) :"))
+    root.Children.Add(_make_field_label("Y axis name (empty = inferred from CSV, single curve):"))
     target.txt_y_label = _themed_textbox()
     target.txt_y_label.Margin = Thickness(0, 4, 0, 12)
     target.txt_y_label.Text = row_config.y_axis_label or ""
     root.Children.Add(target.txt_y_label)
 
-    root.Children.Add(_make_field_label("Couleur de la courbe :"))
+    root.Children.Add(_make_field_label("Curve color:"))
     target.cmb_color = ComboBox()
     target.cmb_color.Margin = Thickness(0, 4, 0, 12)
     for color_label, color_value in CURVE_COLOR_OPTIONS:
@@ -859,7 +859,7 @@ class ReportGeneratorApp(object):
         # mono-analyse, comportement identique a avant (listes taguees (obj, None), jamais suffixees).
         self._analyses = collect_analyses()
         self._multi_analysis = len(self._analyses) > 1
-        print "Analyses trouvees : {}".format(len(self._analyses))
+        print "Analyses found: {}".format(len(self._analyses))
         for _i, _a in enumerate(self._analyses, start=1):
             print "  {} : {}".format(_i, _a.Name)
 
@@ -911,6 +911,7 @@ class ReportGeneratorApp(object):
         self._config_panel_row_config = None   # row_config en cours d'edition dans le panneau
         self._config_panel_fields = None       # _ConfigFieldsHolder courant (cmb_view/cmb_section/...)
         self._config_panel_refresh = None      # callable() invoque apres "Appliquer" (rafraichit la ligne/l'apercu)
+        self._config_panel_bulk_rows = None    # list de SectionRow si panneau ouvert en mode groupe (bulk), None sinon
 
         # --- Etat de l'onglet "Slide combinee" (grille en cours de construction, voir _build_multi_result_tab) ---
         self._mr_template_count = None    # nombre de cases actives du template choisi (2/3/4/6/8)
@@ -1050,7 +1051,7 @@ class ReportGeneratorApp(object):
             bitmap.EndInit()
             self.window.Resources["SidebarLogoBitmap"] = bitmap
         except Exception as e:
-            print "Chargement du logo impossible : " + str(e)
+            print "Unable to load the logo: " + str(e)
 
     def _refresh_general_slide_status(self):
         """
@@ -1163,21 +1164,21 @@ class ReportGeneratorApp(object):
 
         if kind == "file":
             if not os.path.isfile(new_value) or not new_value.lower().endswith(".pptx"):
-                MessageBox.Show("Chemin invalide : le template doit etre un fichier .pptx existant.",
-                                 "Chemin invalide", MessageBoxButton.OK, MessageBoxImage.Warning)
+                MessageBox.Show("Invalid path: the template must be an existing .pptx file.",
+                                 "Invalid path", MessageBoxButton.OK, MessageBoxImage.Warning)
                 textbox.Text = current_value
                 return
         else:
             try:
                 ensure_folder_exists(new_value)
             except Exception as ex:
-                MessageBox.Show("Impossible d'utiliser ce dossier :\n" + str(ex),
-                                 "Chemin invalide", MessageBoxButton.OK, MessageBoxImage.Warning)
+                MessageBox.Show("Unable to use this folder:\n" + str(ex),
+                                 "Invalid path", MessageBoxButton.OK, MessageBoxImage.Warning)
                 textbox.Text = current_value
                 return
 
         globals()[name] = new_value
-        print "Chemin '{}' mis a jour : {}".format(name, new_value)
+        print "Path '{}' updated: {}".format(name, new_value)
         if name == "CSV_EXPORT_FOLDER":
             self._refresh_csv_files()
 
@@ -1216,7 +1217,7 @@ class ReportGeneratorApp(object):
             globals()[name] = default_value
             self._path_textboxes[name].Text = default_value
         self._refresh_csv_files()
-        print "Chemins de fichiers reinitialises aux valeurs d'origine."
+        print "File paths reset to their original values."
 
     # --- Onglet "Fichiers" : liste des CSV disponibles ---
 
@@ -1234,7 +1235,7 @@ class ReportGeneratorApp(object):
 
         if not names:
             placeholder = TextBlock()
-            placeholder.Text = "(Aucun fichier CSV pour le moment)"
+            placeholder.Text = "(No CSV file yet)"
             placeholder.Foreground = SEARCH_PLACEHOLDER_BRUSH
             placeholder.Margin = Thickness(6)
             self.panel_csv_files.Children.Add(placeholder)
@@ -1270,7 +1271,7 @@ class ReportGeneratorApp(object):
         actions.VerticalAlignment = VerticalAlignment.Center
 
         btn_open = _themed_button()
-        btn_open.Content = "Ouvrir"
+        btn_open.Content = "Open"
         btn_open.Padding = Thickness(8, 3, 8, 3)
         btn_open.FontSize = 11
         btn_open.Margin = Thickness(0, 0, 6, 0)
@@ -1278,7 +1279,7 @@ class ReportGeneratorApp(object):
         actions.Children.Add(btn_open)
 
         btn_show = _themed_button()
-        btn_show.Content = "Afficher dans le dossier"
+        btn_show.Content = "Show in folder"
         btn_show.Padding = Thickness(8, 3, 8, 3)
         btn_show.FontSize = 11
         btn_show.Click += self._make_show_in_folder_handler(path)
@@ -1333,8 +1334,8 @@ class ReportGeneratorApp(object):
         try:
             Process.Start(path)
         except Exception as ex:
-            MessageBox.Show("Impossible d'ouvrir le fichier :\n" + str(ex),
-                             "Erreur", MessageBoxButton.OK, MessageBoxImage.Error)
+            MessageBox.Show("Unable to open the file:\n" + str(ex),
+                             "Error", MessageBoxButton.OK, MessageBoxImage.Error)
 
     def _on_show_in_folder(self, path):
         """
@@ -1345,8 +1346,8 @@ class ReportGeneratorApp(object):
         try:
             Process.Start("explorer.exe", '/select,"{}"'.format(path))
         except Exception as ex:
-            MessageBox.Show("Impossible d'afficher le fichier dans le dossier :\n" + str(ex),
-                             "Erreur", MessageBoxButton.OK, MessageBoxImage.Error)
+            MessageBox.Show("Unable to show the file in its folder:\n" + str(ex),
+                             "Error", MessageBoxButton.OK, MessageBoxImage.Error)
 
     # --- Onglet "Fichiers" : nettoyage des dossiers de donnees ---
     # Une tuile par sous-dossier de DATA_ROOT (hors legendes, voir list_data_cleanup_folders dans
@@ -1366,7 +1367,7 @@ class ReportGeneratorApp(object):
 
         if not folders:
             placeholder = TextBlock()
-            placeholder.Text = "(Aucun dossier de donnees pour le moment)"
+            placeholder.Text = "(No data folder yet)"
             placeholder.Foreground = SEARCH_PLACEHOLDER_BRUSH
             placeholder.Margin = Thickness(6)
             self.panel_data_cleanup.Children.Add(placeholder)
@@ -1392,14 +1393,14 @@ class ReportGeneratorApp(object):
         content.Children.Add(title)
 
         detail = TextBlock()
-        detail.Text = "{} - {} fichier(s)".format(format_folder_size(size_bytes), file_count)
+        detail.Text = "{} - {} file(s)".format(format_folder_size(size_bytes), file_count)
         detail.FontSize = 10
         detail.Foreground = SEARCH_PLACEHOLDER_BRUSH
         detail.Margin = Thickness(0, 2, 0, 6)
         content.Children.Add(detail)
 
         btn_clear = Button()
-        btn_clear.Content = "Vider"
+        btn_clear.Content = "Clear"
         btn_clear.Style = _shared_resources["DangerButtonLight"]
         btn_clear.Padding = Thickness(8, 3, 8, 3)
         btn_clear.FontSize = 11
@@ -1437,13 +1438,13 @@ class ReportGeneratorApp(object):
         Retourne : rien (effet de bord sur le systeme de fichiers et l'UI, si confirme).
         """
         answer = MessageBox.Show(
-            "Supprimer tout le contenu de \"{}\" ? Cette action est irreversible.".format(name),
-            "Confirmer la suppression", MessageBoxButton.YesNo, MessageBoxImage.Warning)
+            "Delete all contents of \"{}\"? This action cannot be undone.".format(name),
+            "Confirm deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning)
         if answer != MessageBoxResult.Yes:
             return
 
         clear_folder_contents(path)
-        print "Dossier vide : " + path
+        print "Folder cleared: " + path
 
         # Le dernier rapport genere n'existe peut-etre plus si c'est justement ce dossier qui vient
         # d'etre vide : la tuile "resultat de rapport" (Ouvrir/Afficher dans le dossier) doit repasser a l'etat neutre.
@@ -1461,7 +1462,7 @@ class ReportGeneratorApp(object):
         """
         self._last_report_path = None
         self.border_report_tile.Background = _shared_resources["SecondaryBackgroundBrush"]
-        self.lbl_report_name.Text = "Aucun rapport genere"
+        self.lbl_report_name.Text = "No report generated"
         self.btn_report_view.IsEnabled = False
         self.btn_report_show_in_folder.IsEnabled = False
 
@@ -1476,15 +1477,15 @@ class ReportGeneratorApp(object):
             return
 
         answer = MessageBox.Show(
-            "Supprimer tout le contenu de {} dossier(s) de donnees (images, CSV, exports 3D, rapports...) ? "
-            "Les legendes ne sont pas concernees. Cette action est irreversible.".format(len(folders)),
-            "Confirmer la suppression globale", MessageBoxButton.YesNo, MessageBoxImage.Warning)
+            "Delete all contents of {} data folder(s) (images, CSV, 3D exports, reports...)? "
+            "Legends are not affected. This action cannot be undone.".format(len(folders)),
+            "Confirm global deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning)
         if answer != MessageBoxResult.Yes:
             return
 
         for _name, path in folders:
             clear_folder_contents(path)
-        print "{} dossier(s) de donnees vide(s) (legendes conservees).".format(len(folders))
+        print "{} data folder(s) cleared (legends kept).".format(len(folders))
 
         self._reset_report_status_tile()
         self._refresh_csv_files()
@@ -1499,10 +1500,10 @@ class ReportGeneratorApp(object):
         Retourne : rien (effet de bord sur les controles de la tuile de statut).
         """
         self.progress_fill.Width = 0
-        self.lbl_progress_status.Text = "Generation en cours... (0/{})".format(total)
+        self.lbl_progress_status.Text = "Generating... (0/{})".format(total)
         self.border_report_status.Background = _shared_resources["CardBackgroundBrush"]
         self.border_report_tile.Background = _shared_resources["SecondaryBackgroundBrush"]
-        self.lbl_report_name.Text = "Generation en cours..."
+        self.lbl_report_name.Text = "Generating..."
         self.btn_report_view.IsEnabled = False
         self.btn_report_show_in_folder.IsEnabled = False
 
@@ -1516,7 +1517,7 @@ class ReportGeneratorApp(object):
         # 05_interactive_slides.py) : sans cet appel, la fenetre gele jusqu'a la fin de la generation.
         fraction = float(done) / total if total else 1.0
         self.progress_fill.Width = fraction * self.progress_track.ActualWidth
-        self.lbl_progress_status.Text = "Generation en cours... ({}/{})".format(done, total)
+        self.lbl_progress_status.Text = "Generating... ({}/{})".format(done, total)
         self._refresh_csv_files()
         self._refresh_data_cleanup_tiles()
         SWF.Application.DoEvents()
@@ -1530,7 +1531,7 @@ class ReportGeneratorApp(object):
         # Seule la sous-tuile "resultat" (borderReportTile) passe en vert - la tuile englobante et
         # la sous-tuile de progression restent neutres, pour ne mettre en avant que l'element qui
         # donne effectivement acces au rapport.
-        self.lbl_progress_status.Text = "Rapport termine"
+        self.lbl_progress_status.Text = "Report complete"
         self.progress_fill.Width = self.progress_track.ActualWidth
         self.border_report_tile.Background = _shared_resources["ReportReadyBackgroundBrush"]
         self.lbl_report_name.Text = os.path.basename(path)
@@ -1571,13 +1572,13 @@ class ReportGeneratorApp(object):
         # configurer (Contacts a afficher : juste une case a cocher, pas de vue/coupe/etc).
         section_defs = [
             ("GeometryParts", "panelGeometryParts", "searchGeometryParts", "general",
-             "Pieces a isoler (geometrie)", self._bodies,
+             "Parts to isolate (geometry)", self._bodies,
              GeometryPartRowConfig, build_geometry_row_display_name, "geometry_part", False),
             ("MeshParts", "panelMeshParts", "searchMeshParts", "general",
-             "Piece a isoler mesh", self._bodies,
+             "Mesh part to isolate", self._bodies,
              MeshPartRowConfig, build_mesh_part_row_display_name, "mesh_part", False),
             ("AnalysisContext", "panelAnalysisContext", "searchAnalysisContext", "general",
-             "Contexte d'analyse (steps, parametres)", self._analyses,
+             "Analysis context (steps, settings)", self._analyses,
              AnalysisContextRowConfig, build_analysis_context_row_display_name, "mesh_part", False),
             ("BoundaryConditions", "panelBoundaryConditions", "searchBoundaryConditions", "conditions",
              "Boundary Conditions", self._bcs,
@@ -1586,10 +1587,10 @@ class ReportGeneratorApp(object):
              "Bolt Pretension", self._bolt_pretensions,
              SlideRowConfig, build_row_display_name, "result", True),
             ("Contacts", "panelContacts", "searchContacts", "conditions",
-             "Contacts a afficher", self._contact_regions,
+             "Contacts to display", self._contact_regions,
              ContactRowConfig, build_contact_row_display_name, None, False),
             ("ContactToolConnections", "panelContactToolConnections", "searchContactToolConnections", "conditions",
-             "Connexion : Contact Tool", self._contact_tool_connections_results,
+             "Connection: Contact Tool", self._contact_tool_connections_results,
              SlideRowConfig, build_row_display_name, "result", False),
             ("SolutionInfo", "panelSolutionInfo", "searchSolutionInfo", "conditions",
              "Solution Information", self._solution_info_trackers,
@@ -1598,7 +1599,7 @@ class ReportGeneratorApp(object):
              "Contact Tool Results", self._contact_tool_results,
              SlideRowConfig, build_row_display_name, "result", True),
             ("Results", "panelResults", "searchResults", "results",
-             "Resultats", self._results,
+             "Results", self._results,
              SlideRowConfig, build_row_display_name, "result", True),
             ("BoltTool", "panelBoltTool", "searchBoltTool", "results",
              "Bolt Tool", self._bolt_tool_results,
@@ -1619,6 +1620,7 @@ class ReportGeneratorApp(object):
                 "label": label_text,
                 "search_box": search_box,
                 "panel": panel,
+                "panel_kind": panel_kind,
             }
             self._section_order.append(name)
             self._wire_search_box(search_box, rows, panel)
@@ -1808,9 +1810,13 @@ class ReportGeneratorApp(object):
     # "Appliquer" valide et ferme (comme l'ancien bouton OK) ; "Annuler"/le bouton "x" ferment sans
     # valider (comme l'ancien bouton Annuler/la fermeture de la fenetre).
 
-    def _open_config_panel(self, kind, row_config, refresh_callback):
+    def _open_config_panel(self, kind, row_config, refresh_callback, bulk_rows=None):
         """
-        Fait : ouvre le panneau lateral global pour row_config, dans l'etat kind, et l'affiche.
+        Fait : ouvre le panneau lateral global pour row_config, dans l'etat kind, et l'affiche. Si
+        bulk_rows est fourni (voir self._on_bulk_config_click), le panneau s'ouvre en mode groupe :
+        row_config ne sert alors qu'a peupler les valeurs initiales des champs (celles de la
+        premiere ligne cochee), et "Appliquer" ecrit dans TOUTES les lignes de bulk_rows (voir
+        self._on_config_panel_apply) au lieu de la seule row_config.
         Depend de : self.panel_config_panel/border_config_panel, _build_row_config_fields/_build_steps_section_fields/
             _build_geometry_part_fields/_build_mesh_part_fields/_build_solution_info_fields, _ConfigFieldsHolder.
         Retourne : rien (effet de bord : peuple panelConfigPanel, rend borderConfigPanel visible).
@@ -1819,12 +1825,13 @@ class ReportGeneratorApp(object):
         self._config_panel_row_config = row_config
         self._config_panel_refresh = refresh_callback
         self._config_panel_fields = _ConfigFieldsHolder()
+        self._config_panel_bulk_rows = bulk_rows
 
         panel = self.panel_config_panel
         panel.Children.Clear()
 
         lbl_kicker = TextBlock()
-        lbl_kicker.Text = "PARAMETRES"
+        lbl_kicker.Text = "SETTINGS"
         lbl_kicker.FontSize = 11
         lbl_kicker.FontWeight = FontWeights.Bold
         lbl_kicker.Foreground = _shared_resources["TextMutedBrush"]
@@ -1840,7 +1847,8 @@ class ReportGeneratorApp(object):
         header.ColumnDefinitions.Add(col_close)
 
         lbl_title = TextBlock()
-        lbl_title.Text = row_config.obj.Name
+        lbl_title.Text = ("Bulk configuration ({} items)".format(len(bulk_rows)) if bulk_rows
+                           else row_config.obj.Name)
         lbl_title.Style = _shared_resources["CardTitle"]
         lbl_title.TextWrapping = TextWrapping.Wrap
         Grid.SetColumn(lbl_title, 0)
@@ -1859,23 +1867,53 @@ class ReportGeneratorApp(object):
 
         panel.Children.Add(header)
 
-        badge = Border()
-        badge.Background = ROW_STATUS_CONFIGURED_BRUSH if row_config.configured else ROW_STATUS_SELECTED_BRUSH
-        badge.CornerRadius = CornerRadius(0)
-        badge.Padding = Thickness(6, 2, 6, 2)
-        badge.Margin = Thickness(0, 4, 0, 10)
-        badge.HorizontalAlignment = HorizontalAlignment.Left
-        badge_text = TextBlock()
-        badge_text.Text = "configure" if row_config.configured else "a configurer"
-        badge_text.FontSize = 10
-        badge_text.FontWeight = FontWeights.SemiBold
-        badge.Child = badge_text
-        panel.Children.Add(badge)
+        if bulk_rows:
+            # Bandeau d'avertissement a la place du badge configured/to configure (qui n'a pas de
+            # sens pour un groupe de lignes potentiellement dans des etats differents) : rappelle
+            # explicitement l'effet du bouton "Appliquer" avant qu'il n'ecrase quoi que ce soit -
+            # la seule vraie garde-fou de ce mode, avec le bouton "Annuler" toujours disponible.
+            banner = Border()
+            banner.Background = ROW_STATUS_SELECTED_BRUSH
+            banner.CornerRadius = CornerRadius(0)
+            banner.Padding = Thickness(8, 6, 8, 6)
+            banner.Margin = Thickness(0, 4, 0, 10)
+            banner_text = TextBlock()
+            banner_text.Text = ("\"Apply\" below will overwrite the settings of all {} checked "
+                                 "line(s) in this section.").format(len(bulk_rows))
+            banner_text.FontSize = 11
+            banner_text.FontWeight = FontWeights.SemiBold
+            banner_text.TextWrapping = TextWrapping.Wrap
+            banner.Child = banner_text
+            panel.Children.Add(banner)
+        else:
+            badge = Border()
+            badge.Background = ROW_STATUS_CONFIGURED_BRUSH if row_config.configured else ROW_STATUS_SELECTED_BRUSH
+            badge.CornerRadius = CornerRadius(0)
+            badge.Padding = Thickness(6, 2, 6, 2)
+            badge.Margin = Thickness(0, 4, 0, 10)
+            badge.HorizontalAlignment = HorizontalAlignment.Left
+            badge_text = TextBlock()
+            badge_text.Text = "configured" if row_config.configured else "to configure"
+            badge_text.FontSize = 10
+            badge_text.FontWeight = FontWeights.SemiBold
+            badge.Child = badge_text
+            panel.Children.Add(badge)
 
         fields = self._config_panel_fields
         if kind == "result":
-            step_count = (get_step_count(row_config.analysis) if row_config.analysis is not None
-                          else self._step_count)
+            if bulk_rows:
+                # Le nombre de loadcases proposes est le MINIMUM parmi toutes les lignes cochees
+                # (elles peuvent venir d'analyses differentes - BC/BP/Resultats/etc sont
+                # multi-analyses, voir section_defs) : impossible de cocher un step qui n'existe
+                # pas pour l'une des lignes, plutot que de le filtrer silencieusement a l'application.
+                step_count = min(
+                    (get_step_count(row.row_config.analysis) if row.row_config.analysis is not None
+                     else self._step_count)
+                    for row in bulk_rows
+                )
+            else:
+                step_count = (get_step_count(row_config.analysis) if row_config.analysis is not None
+                              else self._step_count)
             _build_row_config_fields(fields, panel, row_config, self._views, self._section_plane_labels,
                                       self._legend_names)
             _build_steps_section_fields(fields, panel, row_config, step_count)
@@ -1886,11 +1924,11 @@ class ReportGeneratorApp(object):
             # Le choix du tableau de maillage n'a de sens que pour la ligne Maillage elle-meme
             # (les autres lignes "mesh_part" - pieces isolees, contexte d'analyse - n'en ont pas).
             if row_config is self._mesh_view_config:
-                panel.Children.Add(_make_field_label("Tableau de maillage :"))
+                panel.Children.Add(_make_field_label("Mesh table:"))
                 fields.cmb_mesh_table = ComboBox()
                 fields.cmb_mesh_table.Margin = Thickness(0, 4, 0, 12)
-                fields.cmb_mesh_table.Items.Add("Tableau par defaut (ElementSize, Nodes, Elements)")
-                fields.cmb_mesh_table.Items.Add("Tableau complet (toutes les proprietes)")
+                fields.cmb_mesh_table.Items.Add("Default table (ElementSize, Nodes, Elements)")
+                fields.cmb_mesh_table.Items.Add("Full table (all properties)")
                 fields.cmb_mesh_table.SelectedIndex = 1 if self._mesh_table_full else 0
                 panel.Children.Add(fields.cmb_mesh_table)
         elif kind == "solution_info":
@@ -1901,14 +1939,14 @@ class ReportGeneratorApp(object):
         buttons.Margin = Thickness(0, 14, 0, 0)
 
         btn_apply = _themed_button(primary=True)
-        btn_apply.Content = "Appliquer"
+        btn_apply.Content = "Apply"
         btn_apply.Width = 110
         btn_apply.Margin = Thickness(0, 0, 10, 0)
         btn_apply.Click += self._on_config_panel_apply
         buttons.Children.Add(btn_apply)
 
         btn_cancel = _themed_button()
-        btn_cancel.Content = "Annuler"
+        btn_cancel.Content = "Cancel"
         btn_cancel.Width = 100
         btn_cancel.Click += self._on_config_panel_close
         buttons.Children.Add(btn_cancel)
@@ -1917,18 +1955,17 @@ class ReportGeneratorApp(object):
 
         self.border_config_panel.Visibility = Visibility.Visible
 
-    def _on_config_panel_apply(self, sender, e):
+    def _apply_config_fields_to_row_config(self, kind, fields, row_config):
         """
-        Fait : valide la configuration en cours dans le panneau lateral (bouton "Appliquer") et le ferme.
-        Depend de : self._config_panel_kind/_row_config/_fields/_refresh, _apply_row_config_fields/_apply_steps_section_fields/
-            _apply_geometry_part_fields/_apply_mesh_part_fields/_apply_solution_info_fields.
-        Retourne : rien (effet de bord : met a jour row_config.configured et rafraichit l'appelant, ferme le panneau).
+        Fait : lit les champs du panneau (fields) et les applique a UNE row_config donnee, selon kind.
+        N'appelle jamais l'API Mechanical (uniquement des ecritures d'attributs Python sur
+        row_config) : c'est ce qui rend cette fonction sure a appeler en boucle depuis
+        _on_config_panel_apply en mode groupe, contrairement a une reconstruction de panneau WPF par
+        ligne (voir l'historique de la fonctionnalite "Config. groupee" reverte precedemment).
+        Depend de : _apply_row_config_fields/_apply_steps_section_fields/_apply_geometry_part_fields/
+            _apply_mesh_part_fields/_apply_solution_info_fields.
+        Retourne : rien (effet de bord sur row_config uniquement).
         """
-        kind = self._config_panel_kind
-        row_config = self._config_panel_row_config
-        fields = self._config_panel_fields
-        refresh_callback = self._config_panel_refresh
-
         if kind == "result":
             _apply_row_config_fields(fields, row_config)
             _apply_steps_section_fields(fields, row_config)
@@ -1940,8 +1977,35 @@ class ReportGeneratorApp(object):
                 self._mesh_table_full = (fields.cmb_mesh_table.SelectedIndex == 1)
         elif kind == "solution_info":
             _apply_solution_info_fields(fields, row_config)
-
         row_config.configured = True
+
+    def _on_config_panel_apply(self, sender, e):
+        """
+        Fait : valide la configuration en cours dans le panneau lateral (bouton "Appliquer") et le
+        ferme. En mode groupe (self._config_panel_bulk_rows non vide), applique les memes champs a
+        CHAQUE ligne cochee (une ecriture d'attributs par ligne, sans reconstruction de panneau WPF
+        ni appel API Mechanical dans la boucle - voir _apply_config_fields_to_row_config) puis
+        rafraichit chaque ligne et l'apercu une seule fois a la fin.
+        Depend de : self._config_panel_kind/_row_config/_fields/_refresh/_bulk_rows,
+            _apply_config_fields_to_row_config, _row_status_brush, self._update_preview.
+        Retourne : rien (effet de bord : met a jour row_config.configured et rafraichit l'appelant, ferme le panneau).
+        """
+        kind = self._config_panel_kind
+        fields = self._config_panel_fields
+        bulk_rows = self._config_panel_bulk_rows
+
+        if bulk_rows:
+            for row in bulk_rows:
+                self._apply_config_fields_to_row_config(kind, fields, row.row_config)
+                row.text_block.Text = row.display_name_func(row.row_config)
+                row.border.Background = _row_status_brush(row)
+            self._close_config_panel()
+            self._update_preview()
+            return
+
+        row_config = self._config_panel_row_config
+        refresh_callback = self._config_panel_refresh
+        self._apply_config_fields_to_row_config(kind, fields, row_config)
         self._close_config_panel()
         if refresh_callback:
             refresh_callback()
@@ -1964,6 +2028,7 @@ class ReportGeneratorApp(object):
         self._config_panel_row_config = None
         self._config_panel_fields = None
         self._config_panel_refresh = None
+        self._config_panel_bulk_rows = None
         self.panel_config_panel.Children.Clear()
         self.border_config_panel.Visibility = Visibility.Collapsed
 
@@ -1986,7 +2051,7 @@ class ReportGeneratorApp(object):
         template_counts = sorted(MULTI_STEP_SLIDE_TEMPLATES.keys())
         for count in template_counts:
             btn = _themed_button()
-            btn.Content = "{} resultats".format(count)
+            btn.Content = "{} results".format(count)
             btn.Padding = Thickness(10, 5, 10, 5)
             btn.FontSize = 11
             btn.Margin = Thickness(0, 0, 6, 4)
@@ -2074,11 +2139,11 @@ class ReportGeneratorApp(object):
 
         if self._mr_template_count:
             self.lbl_multi_result_hint.Text = (
-                "La grille suit le template choisi : seules les {} premieres cases sont "
-                "configurables. Cliquez sur une case pour la configurer dans le panneau de "
-                "droite - plus aucune fenetre separee.".format(self._mr_template_count))
+                "The grid follows the chosen template: only the first {} cells are "
+                "configurable. Click a cell to configure it in the panel on the "
+                "right - no more separate windows.".format(self._mr_template_count))
         else:
-            self.lbl_multi_result_hint.Text = "Choisissez un template ci-dessus pour commencer."
+            self.lbl_multi_result_hint.Text = "Choose a template above to get started."
 
     def _make_multi_result_cell_click_handler(self, index):
         """
@@ -2119,10 +2184,10 @@ class ReportGeneratorApp(object):
 
         if cfg is not None:
             border.Background = GRID_CELL_CONFIGURED_BRUSH
-            label.Text = "Case {}\n{}\n(etat actuel)".format(index + 1, cfg.obj.Name)
+            label.Text = "Cell {}\n{}\n(current state)".format(index + 1, cfg.obj.Name)
         else:
             border.Background = GRID_CELL_UNCONFIGURED_BRUSH
-            label.Text = "Case {}\ncliquer pour choisir un resultat\n+".format(index + 1)
+            label.Text = "Cell {}\nclick to choose a result\n+".format(index + 1)
 
         if index == self._mr_selected_cell_index:
             border.BorderThickness = Thickness(2)
@@ -2145,9 +2210,9 @@ class ReportGeneratorApp(object):
 
         self.panel_multi_result_side.Children.Clear()
         txt = TextBlock()
-        txt.Text = ("Choisissez un template puis cliquez sur une case de la grille pour la "
-                     "configurer." if self._mr_template_count else
-                     "Choisissez un template de slide combinee pour commencer.")
+        txt.Text = ("Choose a template then click a cell in the grid to "
+                     "configure it." if self._mr_template_count else
+                     "Choose a combined slide template to get started.")
         txt.TextWrapping = TextWrapping.Wrap
         txt.Foreground = _shared_resources["TextMutedBrush"]
         txt.Margin = Thickness(4)
@@ -2175,13 +2240,13 @@ class ReportGeneratorApp(object):
 
         title_panel = StackPanel()
         lbl_case = TextBlock()
-        lbl_case.Text = "CASE {}".format(index + 1)
+        lbl_case.Text = "CELL {}".format(index + 1)
         lbl_case.FontWeight = FontWeights.Bold
         lbl_case.FontSize = 11
         lbl_case.Foreground = _shared_resources["TextMutedBrush"]
         title_panel.Children.Add(lbl_case)
         lbl_title = TextBlock()
-        lbl_title.Text = "Choisir un resultat"
+        lbl_title.Text = "Choose a result"
         lbl_title.Style = _shared_resources["CardTitle"]
         title_panel.Children.Add(lbl_title)
         Grid.SetColumn(title_panel, 0)
@@ -2291,7 +2356,7 @@ class ReportGeneratorApp(object):
 
         title_panel = StackPanel()
         lbl_case = TextBlock()
-        lbl_case.Text = "CASE {}".format(index + 1)
+        lbl_case.Text = "CELL {}".format(index + 1)
         lbl_case.FontWeight = FontWeights.Bold
         lbl_case.FontSize = 11
         lbl_case.Foreground = _shared_resources["TextMutedBrush"]
@@ -2326,14 +2391,14 @@ class ReportGeneratorApp(object):
         badge.CornerRadius = CornerRadius(0)
         badge.Padding = Thickness(6, 2, 6, 2)
         badge_text = TextBlock()
-        badge_text.Text = "configure" if cfg.configured else "a configurer"
+        badge_text.Text = "configured" if cfg.configured else "to configure"
         badge_text.FontSize = 10
         badge_text.FontWeight = FontWeights.SemiBold
         badge.Child = badge_text
         status_row.Children.Add(badge)
 
         btn_change = _themed_button()
-        btn_change.Content = "Changer de resultat"
+        btn_change.Content = "Change result"
         btn_change.FontSize = 11
         btn_change.Padding = Thickness(8, 2, 8, 2)
         btn_change.Margin = Thickness(8, 0, 0, 0)
@@ -2347,7 +2412,7 @@ class ReportGeneratorApp(object):
                                   self._views, self._section_plane_labels, self._legend_names)
 
         btn_apply = _themed_button(primary=True)
-        btn_apply.Content = "Appliquer"
+        btn_apply.Content = "Apply"
         btn_apply.Margin = Thickness(0, 10, 0, 0)
         btn_apply.Click += self._on_multi_result_apply
         self.panel_multi_result_side.Children.Add(btn_apply)
@@ -2396,7 +2461,7 @@ class ReportGeneratorApp(object):
             self.lbl_multi_result_fill_count.Text = ""
             return
         filled = sum(1 for cfg in self._mr_cell_configs[:self._mr_template_count] if cfg is not None)
-        self.lbl_multi_result_fill_count.Text = "{} / {} cases remplies".format(filled, self._mr_template_count)
+        self.lbl_multi_result_fill_count.Text = "{} / {} cells filled".format(filled, self._mr_template_count)
 
     def _on_multi_result_add_to_report(self, sender, e):
         """
@@ -2405,22 +2470,22 @@ class ReportGeneratorApp(object):
         Retourne : rien (effet de bord : peut ajouter une entree a self._multi_result_slides et rafraichir l'apercu).
         """
         if not self._mr_template_count:
-            MessageBox.Show("Choisissez d'abord un template (nombre de resultats a combiner).",
-                             "Aucun template", MessageBoxButton.OK, MessageBoxImage.Warning)
+            MessageBox.Show("First choose a template (number of results to combine).",
+                             "No template", MessageBoxButton.OK, MessageBoxImage.Warning)
             return
 
         active_configs = self._mr_cell_configs[:self._mr_template_count]
         missing = active_configs.count(None)
         if missing:
             MessageBox.Show(
-                "Toutes les cases doivent etre configurees avant d'ajouter la slide au rapport "
-                "({} case(s) sur {} manquante(s)).".format(missing, self._mr_template_count),
-                "Configuration incomplete", MessageBoxButton.OK, MessageBoxImage.Warning)
+                "All cells must be configured before adding the slide to the report "
+                "({} cell(s) out of {} missing).".format(missing, self._mr_template_count),
+                "Incomplete configuration", MessageBoxButton.OK, MessageBoxImage.Warning)
             return
 
         self._multi_result_slides.append(MultiResultSlideConfig(self._mr_template_count, active_configs))
         self._update_preview()
-        print "Slide combinee ajoutee a l'apercu du rapport ({} resultats).".format(self._mr_template_count)
+        print "Combined slide added to the report preview ({} results).".format(self._mr_template_count)
 
         # Repart d'une grille vierge sur le meme template, pour en construire une autre a la suite.
         self._set_multi_result_template(self._mr_template_count)
@@ -2538,9 +2603,9 @@ class ReportGeneratorApp(object):
         """
         entries = []
         if self.chk_geometry.IsChecked:
-            entries.append(("general", "Geometrie"))
+            entries.append(("general", "Geometry"))
         if self.chk_mesh.IsChecked:
-            entries.append(("general", "Maillage"))
+            entries.append(("general", "Mesh"))
         for name in self._section_order:
             if any(row.checkbox.IsChecked for row in self._sections[name]["rows"]):
                 entries.append((name, None))
@@ -2727,14 +2792,14 @@ class ReportGeneratorApp(object):
 
         if kind == "general":
             chips = []
-            if payload == "Geometrie":
+            if payload == "Geometry":
                 if self._geometry_view_config.view_name:
-                    chips.append(self._build_preview_list_row("vue=" + self._geometry_view_config.view_name))
-            elif payload == "Maillage":
-                table_mode = "Tableau complet" if self._mesh_table_full else "Tableau par defaut"
+                    chips.append(self._build_preview_list_row("view=" + self._geometry_view_config.view_name))
+            elif payload == "Mesh":
+                table_mode = "Full table" if self._mesh_table_full else "Default table"
                 chips.append(self._build_preview_list_row(table_mode))
                 if self._mesh_view_config.view_name:
-                    chips.append(self._build_preview_list_row("vue=" + self._mesh_view_config.view_name))
+                    chips.append(self._build_preview_list_row("view=" + self._mesh_view_config.view_name))
             content, badge = self._build_preview_card_content(payload, chips, index + 1)
         elif kind == "MultiResultSlide":
             # Pas de case a cocher pour ce type d'entree (voir _on_multi_result_add_to_report) : la
@@ -2744,7 +2809,7 @@ class ReportGeneratorApp(object):
                 full_text = build_row_display_name(cell_cfg)
                 parts = full_text.split(" | ")
                 chips.append(self._build_preview_list_row(parts[0], parts[1:]))
-            title = "Slide combinee ({} resultats)".format(payload.template_count)
+            title = "Combined slide ({} results)".format(payload.template_count)
             content, badge = self._build_preview_card_content(title, chips, index + 1)
             delete_handler = self._make_multi_result_delete_handler(payload)
         else:
@@ -2768,7 +2833,7 @@ class ReportGeneratorApp(object):
 
         if delete_handler is not None:
             btn_delete = _themed_button()
-            btn_delete.Content = "Supprimer"
+            btn_delete.Content = "Delete"
             btn_delete.FontSize = 10
             btn_delete.Padding = Thickness(6, 1, 6, 1)
             btn_delete.Margin = Thickness(10, 0, 0, 0)
@@ -2842,7 +2907,7 @@ class ReportGeneratorApp(object):
 
         if not self._preview_order:
             placeholder = TextBlock()
-            placeholder.Text = "(Aucune slide selectionnee)"
+            placeholder.Text = "(No slide selected)"
             placeholder.Foreground = SEARCH_PLACEHOLDER_BRUSH
             placeholder.Margin = Thickness(6)
             self.panel_preview.Children.Add(placeholder)
@@ -3107,21 +3172,72 @@ class ReportGeneratorApp(object):
             self._set_section_checked(name, checked)
         return handler
 
+    def _make_bulk_config_handler(self, name):
+        """
+        Fait : ferme name par valeur pour produire le handler Click du bouton "Configurer la
+        selection..." d'une zone.
+        Depend de : self._on_bulk_config_click.
+        Retourne : function, le handler(sender, e) a cabler sur le bouton de zone.
+        """
+        def handler(sender, e):
+            """
+            Fait : ouvre le panneau de configuration groupee pour les lignes cochees de la zone associee.
+            Depend de : self._on_bulk_config_click, name capture par la fermeture.
+            Retourne : rien (effet de bord : peut ouvrir borderConfigPanel).
+            """
+            self._on_bulk_config_click(name)
+        return handler
+
+    def _on_bulk_config_click(self, name):
+        """
+        Fait : ouvre le panneau lateral global en mode groupe (bulk) pour toutes les lignes cochees
+        de la zone `name`. Ne fait rien si la zone n'a pas de panneau de configuration (Contacts) ou
+        si aucune ligne n'est cochee - avertit l'utilisateur dans ce dernier cas plutot que d'ouvrir
+        un panneau vide.
+        Depend de : self._sections, self._open_config_panel.
+        Retourne : rien (effet de bord : peut afficher une MessageBox ou ouvrir borderConfigPanel).
+        """
+        section = self._sections[name]
+        panel_kind = section["panel_kind"]
+        if not panel_kind:
+            return
+
+        checked_rows = [row for row in section["rows"] if row.checkbox.IsChecked]
+        if not checked_rows:
+            MessageBox.Show(
+                "Check at least one line in \"{}\" before configuring the selection.".format(section["label"]),
+                "No line selected", MessageBoxButton.OK, MessageBoxImage.Information)
+            return
+
+        # bulk_rows non-None est ce qui bascule _open_config_panel/_on_config_panel_apply en mode
+        # groupe (voir ces methodes) : row_config du template (premiere ligne cochee) sert
+        # uniquement a peupler les valeurs initiales affichees, jamais reecrit lui-meme au clic sur
+        # "Appliquer" (chaque ligne cochee recoit sa propre copie des valeurs choisies).
+        self._open_config_panel(panel_kind, checked_rows[0].row_config, None, bulk_rows=checked_rows)
+
     def _wire_zone_select_buttons(self):
         """
-        Fait : cable les boutons "Tout"/"Aucun" de chaque zone de selection (en-tete de carte XAML).
-        Depend de : self._section_order, self.window.FindName, self._make_zone_toggle_handler.
-        Retourne : rien (effet de bord : cable les Click des boutons btnZoneCheck{name}/btnZoneUncheck{name}).
+        Fait : cable les boutons "Tout"/"Aucun"/"Configurer la selection" de chaque zone de
+        selection (en-tete de carte XAML).
+        Depend de : self._section_order, self.window.FindName, self._make_zone_toggle_handler,
+            self._make_bulk_config_handler.
+        Retourne : rien (effet de bord : cable les Click des boutons btnZoneCheck{name}/
+            btnZoneUncheck{name}/btnZoneConfig{name}).
         """
         # Raccourci par zone, en plus des boutons "Tout (de)selectionner" existants qui agissent
         # sur tout un onglet a la fois (voir _set_group_checked).
         for name in self._section_order:
             check_btn = self.window.FindName("btnZoneCheck" + name)
             uncheck_btn = self.window.FindName("btnZoneUncheck" + name)
+            config_btn = self.window.FindName("btnZoneConfig" + name)
             if check_btn is not None:
                 check_btn.Click += self._make_zone_toggle_handler(name, True)
             if uncheck_btn is not None:
                 uncheck_btn.Click += self._make_zone_toggle_handler(name, False)
+            # Absent pour les zones sans panneau de configuration (Contacts : simple case a
+            # cocher, rien a configurer - voir section_defs dans _build_sections).
+            if config_btn is not None:
+                config_btn.Click += self._make_bulk_config_handler(name)
 
     def _on_check_all_general(self, sender, e):
         """
@@ -3185,11 +3301,11 @@ class ReportGeneratorApp(object):
         """
         try:
             remove_stale_figures()
-            print "Figures supprimees."
+            print "Figures deleted."
         except Exception as ex:
-            print "ERREUR pendant la suppression des figures : " + str(ex)
-            MessageBox.Show("Erreur pendant la suppression des figures :\n" + str(ex),
-                             "Erreur", MessageBoxButton.OK, MessageBoxImage.Error)
+            print "ERROR while deleting figures: " + str(ex)
+            MessageBox.Show("Error while deleting figures:\n" + str(ex),
+                             "Error", MessageBoxButton.OK, MessageBoxImage.Error)
 
     def _on_reset_legends(self, sender, e):
         """
@@ -3199,11 +3315,11 @@ class ReportGeneratorApp(object):
         """
         try:
             reset_legend()
-            print "Legendes reinitialisees."
+            print "Legends reset."
         except Exception as ex:
-            print "ERREUR pendant la reinitialisation des legendes : " + str(ex)
-            MessageBox.Show("Erreur pendant la reinitialisation des legendes :\n" + str(ex),
-                             "Erreur", MessageBoxButton.OK, MessageBoxImage.Error)
+            print "ERROR while resetting legends: " + str(ex)
+            MessageBox.Show("Error while resetting legends:\n" + str(ex),
+                             "Error", MessageBoxButton.OK, MessageBoxImage.Error)
 
     def _on_create_basic_views(self, sender, e):
         """
@@ -3219,13 +3335,13 @@ class ReportGeneratorApp(object):
                 section_plane_label(sp, i) for i, sp in enumerate(self._section_planes)
             ]
             if created:
-                print "{} vue(s) de base creee(s) : {}.".format(len(created), ", ".join(created))
+                print "{} basic view(s) created: {}.".format(len(created), ", ".join(created))
             else:
-                print "Aucune vue de base n'a pu etre creee (voir la console Mechanical)."
+                print "No basic view could be created (see the Mechanical console)."
         except Exception as ex:
-            print "ERREUR pendant la creation des vues de base : " + str(ex)
-            MessageBox.Show("Erreur pendant la creation des vues de base :\n" + str(ex),
-                             "Erreur", MessageBoxButton.OK, MessageBoxImage.Error)
+            print "ERROR while creating basic views: " + str(ex)
+            MessageBox.Show("Error while creating basic views:\n" + str(ex),
+                             "Error", MessageBoxButton.OK, MessageBoxImage.Error)
 
     def _on_export_3d(self, sender, e):
         """
@@ -3234,18 +3350,18 @@ class ReportGeneratorApp(object):
         Retourne : rien (effet de bord : cree des fichiers .avz dans EXPORT_3D_FOLDER, affiche une MessageBox si echec).
         """
         try:
-            _print_console_banner("EXPORT 3D (.avz) EN COURS...")
+            _print_console_banner("3D EXPORT (.avz) IN PROGRESS...")
             exported_count = export_all_3d_views(EXPORT_3D_FOLDER)
             if exported_count:
-                _print_console_banner("{} VUE(S) 3D EXPORTEE(S)".format(exported_count))
-                print "Fichiers .avz disponibles dans : " + EXPORT_3D_FOLDER
+                _print_console_banner("{} 3D VIEW(S) EXPORTED".format(exported_count))
+                print "Available .avz files in: " + EXPORT_3D_FOLDER
             else:
-                _print_console_banner("AUCUNE VUE 3D EXPORTEE")
-                print "Aucun resultat / Contact Tool / Bolt Tool (branche Solution) trouve a exporter."
+                _print_console_banner("NO 3D VIEW EXPORTED")
+                print "No result / Contact Tool / Bolt Tool (Solution branch) found to export."
         except Exception as ex:
-            print "ERREUR pendant l'export 3D : " + str(ex)
-            MessageBox.Show("Erreur pendant l'export 3D :\n" + str(ex),
-                             "Erreur", MessageBoxButton.OK, MessageBoxImage.Error)
+            print "ERROR during 3D export: " + str(ex)
+            MessageBox.Show("Error during 3D export:\n" + str(ex),
+                             "Error", MessageBoxButton.OK, MessageBoxImage.Error)
 
     def _make_multi_result_delete_handler(self, cfg):
         """
@@ -3291,8 +3407,8 @@ class ReportGeneratorApp(object):
         # garder invisible s'est revele instable sur un rapport avec beaucoup de slides) ; la
         # fenetre WPF reste reactive grace a SWF.Application.DoEvents() (_update_generation_progress).
         if not self._preview_order:
-            MessageBox.Show("Aucune slide selectionnee : cochez au moins une option avant de generer le rapport.",
-                             "Rien a generer", MessageBoxButton.OK, MessageBoxImage.Warning)
+            MessageBox.Show("No slide selected: check at least one option before generating the report.",
+                             "Nothing to generate", MessageBoxButton.OK, MessageBoxImage.Warning)
             return
 
         total = len(self._preview_order)
@@ -3302,19 +3418,19 @@ class ReportGeneratorApp(object):
         try:
             remove_stale_figures()
 
-            _print_console_banner("GENERATION DU RAPPORT EN COURS...")
-            print "Ouverture du template PowerPoint..."
+            _print_console_banner("REPORT GENERATION IN PROGRESS...")
+            print "Opening PowerPoint template..."
             report = PPTReportBuilder(TEMPLATE_PATH)
 
             for index, (kind, payload) in enumerate(self._preview_order):
                 if kind == "general":
-                    if payload == "Geometrie":
+                    if payload == "Geometry":
                         apply_view_if_exists(self._geometry_view_config.view_name, self._views)
                         create_geometry_slide(report)
-                    elif payload == "Maillage":
+                    elif payload == "Mesh":
                         apply_view_if_exists(self._mesh_view_config.view_name, self._views)
                         build_mesh_slide(report, self._mesh_table_full)
-                    print "Slide ajoutee : " + payload
+                    print "Slide added: " + payload
                     self._update_generation_progress(index + 1, total)
                     continue
 
@@ -3322,7 +3438,7 @@ class ReportGeneratorApp(object):
                     template = get_multi_step_template(payload.template_count)
                     build_multi_result_slide(report, template, payload.cell_configs, self._views,
                                               self._section_planes, self._section_plane_labels)
-                    print "Slide combinee multi-resultats ajoutee ({} resultats).".format(len(payload.cell_configs))
+                    print "Combined multi-result slide added ({} results).".format(len(payload.cell_configs))
                     self._update_generation_progress(index + 1, total)
                     continue
 
@@ -3351,7 +3467,7 @@ class ReportGeneratorApp(object):
                                          self._views, self._section_planes, self._section_plane_labels,
                                          self._analysis)
                 elif kind == "ContactToolConnections":
-                    build_result_slides(report, selected, "-- Connexion : Contact Tool --",
+                    build_result_slides(report, selected, "-- Connection: Contact Tool --",
                                          self._views, self._section_planes, self._section_plane_labels,
                                          self._analysis)
                 elif kind == "BoltTool":
@@ -3359,33 +3475,33 @@ class ReportGeneratorApp(object):
                                          self._views, self._section_planes, self._section_plane_labels,
                                          self._analysis)
                 elif kind == "Results":
-                    # Sous-titre generique en multi-analyses : self._analysis.Name (Analyses[0])
-                    # serait trompeur pour des resultats venant d'une autre analyse - celle-ci
-                    # est deja indiquee dans le TITRE de chaque slide (voir analysis_suffix).
-                    results_subtitle = "-- Resultats --" if self._multi_analysis else self._analysis.Name
+                    # Generic subtitle in multi-analysis projects: self._analysis.Name (Analyses[0])
+                    # would be misleading for results coming from another analysis - that
+                    # information is already shown in each slide's TITLE (see analysis_suffix).
+                    results_subtitle = "-- Results --" if self._multi_analysis else self._analysis.Name
                     build_result_slides(report, selected, results_subtitle,
                                          self._views, self._section_planes, self._section_plane_labels,
                                          self._analysis)
 
-                print "{} slide(s) {} ajoutee(s).".format(len(selected), self._sections[kind]["label"])
+                print "{} slide(s) {} added.".format(len(selected), self._sections[kind]["label"])
                 self._update_generation_progress(index + 1, total)
 
             self.btn_generate.IsEnabled = False
-            report.keep_open()  # ni Save(), ni Close()/Quit() - le rapport reste ouvert et non enregistre dans PowerPoint
+            report.keep_open()  # neither Save() nor Close()/Quit() - the report stays open and unsaved in PowerPoint
             self._last_report_path = report.working_copy_path
             self._mark_report_ready(report.working_copy_path)
-            _print_console_banner("RAPPORT GENERE AVEC SUCCES")
-            print "Rapport disponible dans l'onglet Fichiers : " + report.working_copy_path
+            _print_console_banner("REPORT GENERATED SUCCESSFULLY")
+            print "Report available in the Files tab: " + report.working_copy_path
         except Exception as ex:
-            _print_console_banner("ERREUR PENDANT LA GENERATION DU RAPPORT")
+            _print_console_banner("ERROR DURING REPORT GENERATION")
             print str(ex)
             if report is not None:
                 try:
                     report.close()
                 except Exception as close_ex:
-                    print "Fermeture de PowerPoint impossible : " + str(close_ex)
-            MessageBox.Show("Erreur pendant la generation du rapport :\n" + str(ex),
-                             "Erreur", MessageBoxButton.OK, MessageBoxImage.Error)
+                    print "Unable to close PowerPoint: " + str(close_ex)
+            MessageBox.Show("Error during report generation:\n" + str(ex),
+                             "Error", MessageBoxButton.OK, MessageBoxImage.Error)
 
     # --- Branchement des evenements ---
 
