@@ -1,4 +1,4 @@
-# 02_image_export.py : export d'images - capture de la vue graphique Mechanical pour geometrie/maillage/BC/resultats, et reconstruction de graphique a partir d'un CSV pour les trackers de Solution Information. Depend de 00_constants.py (doit etre execute avant ce fichier).
+# 02_image_export.py: image export - capturing the Mechanical graphics view for geometry/mesh/BC/results, and rebuilding a chart from a CSV for Solution Information trackers. Depends on 00_constants.py (must be executed before this file).
 
 import csv
 
@@ -15,11 +15,11 @@ CHART_COLORS = [Color.IndianRed, Color.SteelBlue, Color.SeaGreen, Color.DarkOran
 
 def _parse_float(text):
     """
-    Fait : convertit un texte de cellule Mechanical en float, virgule ou point decimal.
-    Depend de : rien (traitement de chaine pur).
-    Retourne : float, ou None si non convertible.
+    Does: converts a Mechanical cell text into a float, comma or dot decimal.
+    Depends on: nothing (pure string processing).
+    Returns: float, or None if not convertible.
     """
-    # Mechanical tourne en locale francaise et renvoie des valeurs type "1,234E-05" dans le Tabular Data pane.
+    # Mechanical runs in a French locale and returns values like "1,234E-05" in the Tabular Data pane.
     if text is None:
         return None
     try:
@@ -30,13 +30,13 @@ def _parse_float(text):
 
 def export_current_view_image(image_name):
     """
-    Fait : exporte la vue graphique actuelle en PNG (logo Ansys masque) avec les parametres par defaut du rapport.
-    Depend de : ExtAPI.Graphics.ExportImage/ViewOptions (API Ansys), get_unique_file_path (00_constants.py).
-    Retourne : str, le chemin du fichier PNG ecrit.
+    Does: exports the current graphics view to PNG (Ansys logo hidden) with the report's default settings.
+    Depends on: ExtAPI.Graphics.ExportImage/ViewOptions (Ansys API), get_unique_file_path (00_constants.py).
+    Returns: str, the path of the written PNG file.
     """
-    # ShowLogo=False force ici (point de passage commun a tous les exports d'image) plutot que
-    # dans chaque fonction d'export haut niveau : garantit qu'aucune image du rapport n'affiche
-    # le logo Ansys, sans devoir y penser a chaque nouvel appelant.
+    # ShowLogo=False forced here (common pass-through point for all image exports) rather than
+    # in each high-level export function: guarantees that no report image shows
+    # the Ansys logo, without having to remember it in every new caller.
     ExtAPI.Graphics.ViewOptions.ShowLogo = False
 
     settings = Ansys.Mechanical.Graphics.GraphicsImageExportSettings()
@@ -52,9 +52,9 @@ def export_current_view_image(image_name):
 
 def set_material_display():
     """
-    Fait : bascule la vue graphique en coloration par materiau, maillage masque.
-    Depend de : ExtAPI.Graphics.ViewOptions (API Ansys).
-    Retourne : rien (effet de bord sur l'etat d'affichage).
+    Does: switches the graphics view to coloring by material, mesh hidden.
+    Depends on: ExtAPI.Graphics.ViewOptions (Ansys API).
+    Returns: nothing (side effect on the display state).
     """
     ExtAPI.Graphics.ViewOptions.ModelColoring = ModelColoring.ByMaterial
     ExtAPI.Graphics.ViewOptions.ShowMesh = False
@@ -62,9 +62,9 @@ def set_material_display():
 
 def export_geometry_image():
     """
-    Fait : exporte la vue de la geometrie, coloree par materiau.
-    Depend de : set_material_display, ExtAPI.DataModel.Project.Model.Geometry, export_current_view_image.
-    Retourne : str, le chemin du PNG.
+    Does: exports the geometry view, colored by material.
+    Depends on: set_material_display, ExtAPI.DataModel.Project.Model.Geometry, export_current_view_image.
+    Returns: str, the path of the PNG.
     """
     set_material_display()
     ExtAPI.DataModel.Project.Model.Geometry.Activate()
@@ -73,9 +73,9 @@ def export_geometry_image():
 
 def export_mesh_image():
     """
-    Fait : exporte la vue du maillage.
-    Depend de : set_material_display, ExtAPI.DataModel.Project.Model.Mesh, export_current_view_image.
-    Retourne : str, le chemin du PNG.
+    Does: exports the mesh view.
+    Depends on: set_material_display, ExtAPI.DataModel.Project.Model.Mesh, export_current_view_image.
+    Returns: str, the path of the PNG.
     """
     set_material_display()
     ExtAPI.DataModel.Project.Model.Mesh.Activate()
@@ -84,11 +84,11 @@ def export_mesh_image():
 
 def export_analysis_overview_image(analysis=None):
     """
-    Fait : exporte la vue d'ensemble annotee (BC A, B, C...) affichee quand on selectionne la racine de l'analyse dans l'arbre.
-    Depend de : export_current_view_image ; analysis ou, si None, ExtAPI.DataModel.Project.Model.Analyses[0].
-    Retourne : str, le chemin du PNG.
+    Does: exports the annotated overview view (BC A, B, C...) shown when selecting the analysis root in the tree.
+    Depends on: export_current_view_image; analysis or, if None, ExtAPI.DataModel.Project.Model.Analyses[0].
+    Returns: str, the path of the PNG.
     """
-    # Reste generique quel que soit le type d'analyse en activant l'analyse fournie plutot qu'un nom code en dur.
+    # Stays generic regardless of analysis type by activating the given analysis instead of a hardcoded name.
     analysis = analysis or ExtAPI.DataModel.Project.Model.Analyses[0]
     analysis.Activate()
     return export_current_view_image(analysis.Name)
@@ -96,20 +96,20 @@ def export_analysis_overview_image(analysis=None):
 
 def export_object_image(obj, image_name):
     """
-    Fait : active un objet et exporte son image via un "Figure" snapshot (plus fiable qu'un export direct en usage repete).
-    Depend de : obj.AddFigure() si disponible, sinon repli sur Activate() ; export_current_view_image.
-    Retourne : str, le chemin du PNG.
+    Does: activates an object and exports its image via a "Figure" snapshot (more reliable than a direct export under repeated use).
+    Depends on: obj.AddFigure() if available, otherwise falls back to Activate(); export_current_view_image.
+    Returns: str, the path of the PNG.
     """
-    # Pas de SetFit() ici : le cadrage de la camera (vue choisie via apply_view_if_exists, ou
-    # position manuelle courante) est laisse tel quel, a la responsabilite de l'utilisateur - un
-    # SetFit() ecraserait silencieusement toute vue personnalisee juste avant la capture.
+    # No SetFit() here: the camera framing (view chosen via apply_view_if_exists, or the
+    # current manual position) is left as-is, at the user's responsibility - a
+    # SetFit() would silently override any custom view right before the capture.
     add_figure = getattr(obj, "AddFigure", None)
     if add_figure is not None:
         try:
             figure = add_figure()
             figure.Activate()
             image_path = export_current_view_image(image_name)
-            obj.Activate()  # restaure l'etat de l'arbre pour les appels suivants (ex: extraction du tabular data)
+            obj.Activate()  # restores the tree state for subsequent calls (e.g.: tabular data extraction)
             return image_path
         except Exception as e:
             print "AddFigure() failed for {} ({}): using direct export instead.".format(obj.Name, str(e))
@@ -120,20 +120,20 @@ def export_object_image(obj, image_name):
 
 def export_solution_image(result):
     """
-    Fait : exporte la vue d'un resultat de solution donne.
-    Depend de : export_object_image.
-    Retourne : str, le chemin du PNG.
+    Does: exports the view of a given solution result.
+    Depends on: export_object_image.
+    Returns: str, the path of the PNG.
     """
     return export_object_image(result, result.Name)
 
 
 def _read_chart_data(csv_path):
     """
-    Fait : lit un CSV (delimiteur ';') et separe l'eventuelle ligne d'en-tete des lignes de donnees numeriques.
-    Depend de : le module csv, _parse_float.
-    Retourne : tuple (headers, rows) - headers est une liste de noms de colonnes (None si absente), rows une liste de lignes de float.
+    Does: reads a CSV (';' delimiter) and separates the optional header row from the numeric data rows.
+    Depends on: the csv module, _parse_float.
+    Returns: tuple (headers, rows) - headers is a list of column names (None if absent), rows a list of float rows.
     """
-    # La 1ere ligne est consideree comme un en-tete si elle n'est pas entierement convertible en nombres.
+    # The 1st row is treated as a header if it isn't fully convertible to numbers.
     raw_rows = []
     with open(csv_path, "rb") as f:
         reader = csv.reader(f, delimiter=';')
@@ -163,12 +163,12 @@ def _read_chart_data(csv_path):
 def export_chart_image_from_csv(csv_path, image_name, chart_title=None, x_axis_label=None,
                                  y_axis_label=None, curve_color=None):
     """
-    Fait : construit une image de graphique (titre, axes gradues, grille, courbes + points) a partir d'un CSV exporte par export_active_tabular_data.
-    Depend de : _read_chart_data, System.Drawing (Bitmap/Graphics/Pen...), CHART_COLORS.
-    Retourne : str, le chemin du PNG genere, ou None si le CSV n'a pas assez de donnees numeriques exploitables.
+    Does: builds a chart image (title, graduated axes, grid, curves + points) from a CSV exported by export_active_tabular_data.
+    Depends on: _read_chart_data, System.Drawing (Bitmap/Graphics/Pen...), CHART_COLORS.
+    Returns: str, the path of the generated PNG, or None if the CSV doesn't have enough usable numeric data.
     """
-    # Utilise pour les objets qui n'affichent qu'un graphique 2D dans Mechanical (trackers de Solution Information) : pas de vue 3D a capturer, le graphique est donc redessine depuis les donnees exportees.
-    # 1ere colonne = axe X (Time/Step) et chaque colonne suivante = une courbe si le CSV a 2+ colonnes ; sinon le numero de ligne sert d'axe X.
+    # Used for objects that only display a 2D chart in Mechanical (Solution Information trackers): no 3D view to capture, so the chart is redrawn from the exported data.
+    # 1st column = X axis (Time/Step) and each following column = a curve if the CSV has 2+ columns; otherwise the row number serves as the X axis.
     headers, rows = _read_chart_data(csv_path)
     if len(rows) < 2:
         print "Not enough numeric data to plot a chart: " + csv_path
@@ -189,7 +189,7 @@ def export_chart_image_from_csv(csv_path, image_name, chart_title=None, x_axis_l
         series_labels = [headers[c] for c in range(1, num_columns)] if num_columns >= 2 else [headers[0]]
     else:
         x_label = "X"
-        series_labels = ["Serie {}".format(i + 1) for i in range(len(series))]
+        series_labels = ["Series {}".format(i + 1) for i in range(len(series))]
 
     if x_axis_label:
         x_label = x_axis_label
@@ -209,7 +209,7 @@ def export_chart_image_from_csv(csv_path, image_name, chart_title=None, x_axis_l
         y_max += 1.0
 
     def to_pixel(x, y):
-        # Fait : convertit un point (x, y) en donnees vers un pixel de la zone de tracage. Depend de : x_min/x_max/y_min/y_max, plot_left/top/right/bottom (portee englobante). Retourne : PointF.
+        # Does: converts a data point (x, y) into a pixel of the plotting area. Depends on: x_min/x_max/y_min/y_max, plot_left/top/right/bottom (enclosing scope). Returns: PointF.
         px = plot_left + (x - x_min) / (x_max - x_min) * (plot_right - plot_left)
         py = plot_bottom - (y - y_min) / (y_max - y_min) * (plot_bottom - plot_top)
         return PointF(px, py)
@@ -230,7 +230,7 @@ def export_chart_image_from_csv(csv_path, image_name, chart_title=None, x_axis_l
         g.DrawString(chart_title if chart_title else image_name, title_font, text_brush,
                       RectangleF(0, 10, width, 30), title_format)
 
-        # --- Grille fine (mineure, non graduee) ---
+        # --- Fine grid (minor, ungraduated) ---
         minor_grid_pen = Pen(Color.FromArgb(240, 240, 240), 1)
         minor_divisions = 20
         for i in range(1, minor_divisions):
@@ -240,7 +240,7 @@ def export_chart_image_from_csv(csv_path, image_name, chart_title=None, x_axis_l
             px = plot_left + t * (plot_right - plot_left)
             g.DrawLine(minor_grid_pen, px, plot_top, px, plot_bottom)
 
-        # --- Grille majeure + graduations (4 divisions sur chaque axe) ---
+        # --- Major grid + graduations (4 divisions on each axis) ---
         major_grid_pen = Pen(Color.Gainsboro, 1)
         divisions = 4
         for i in range(divisions + 1):
@@ -261,7 +261,7 @@ def export_chart_image_from_csv(csv_path, image_name, chart_title=None, x_axis_l
         g.DrawLine(axis_pen, plot_left, plot_bottom, plot_right, plot_bottom)
         g.DrawLine(axis_pen, plot_left, plot_top, plot_left, plot_bottom)
 
-        # --- Titres des axes (noms de colonnes du CSV, ou surcharges x_axis_label/y_axis_label) ---
+        # --- Axis titles (CSV column names, or x_axis_label/y_axis_label overrides) ---
         x_title_format = StringFormat()
         x_title_format.Alignment = StringAlignment.Center
         g.DrawString(x_label, axis_title_font, text_brush,
@@ -276,7 +276,7 @@ def export_chart_image_from_csv(csv_path, image_name, chart_title=None, x_axis_l
             g.DrawString(series_labels[0], axis_title_font, text_brush, RectangleF(-100, -15, 200, 20), y_title_format)
             g.Restore(state)
 
-        # --- Courbes (+ points marques, + legende si plusieurs series) ---
+        # --- Curves (+ marked points, + legend if multiple series) ---
         legend_y = plot_top
         for series_index in range(len(series)):
             serie = series[series_index]

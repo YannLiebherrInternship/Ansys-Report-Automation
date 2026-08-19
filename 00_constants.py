@@ -1,70 +1,70 @@
-# 00_constants.py : constantes globales et helpers generiques (chemins, fichiers). A executer EN PREMIER dans la console de scripting Mechanical.
+# 00_constants.py: global constants and generic helpers (paths, files). Must be executed FIRST in the Mechanical scripting console.
 
 import os
 import re
 import shutil
 
-# === Chemins racine, calcules a partir de PROJECT_DIR (deja defini par AnsysReportGenerator_WPF.py avant l'execfile() de ce fichier, = le dossier "Report Generator" du projet Ansys) ===
-# Aucun chemin code en dur pour un poste/projet particulier : PROJECT_DIR est localise via l'API
-# Ansys elle-meme (ExtAPI.DataModel.Project.ProjectDirectory), pas via l'emplacement du script -
-# un nouveau projet qui regroupe tous les .py, le .xaml et le template dans un dossier "Report
-# Generator" a cote de "user_files" fonctionne directement, et les dossiers de stockage
-# ci-dessous sont crees automatiquement a la premiere execution s'ils n'existent pas encore
-# (voir les ensure_folder_exists() en bas de ce fichier).
+# === Root paths, computed from PROJECT_DIR (already defined by AnsysReportGenerator_WPF.py before the execfile() of this file, = the "Report Generator" folder of the Ansys project) ===
+# No path is hardcoded for a specific machine/project: PROJECT_DIR is located via the Ansys
+# API itself (ExtAPI.DataModel.Project.ProjectDirectory), not via the script location -
+# a new project that groups all the .py files, the .xaml and the template in a "Report
+# Generator" folder next to "user_files" works out of the box, and the storage folders
+# below are created automatically on first run if they don't already exist
+# (see the ensure_folder_exists() calls at the bottom of this file).
 DATA_ROOT = os.path.join(PROJECT_DIR, "data")
 
 IMAGE_EXPORT_FOLDER = os.path.join(DATA_ROOT, "image_export")
 CSV_EXPORT_FOLDER = os.path.join(DATA_ROOT, "csv_export")
 EXPORT_3D_FOLDER = os.path.join(DATA_ROOT, "export_3D")
 
-    # Volontairement HORS de DATA_ROOT (donc jamais concerne par le nettoyage de l'onglet Fichiers,
-    # ni cree automatiquement ci-dessous) : "user_files" est le dossier standard du projet Ansys, a
-    # cote de "Report Generator" (voir PROJECT_DIR ci-dessus) - les legendes y sont deposees et
-    # entretenues manuellement par l'ingenieur, ce script ne fait que les LIRE, jamais les generer.
+    # Deliberately OUTSIDE of DATA_ROOT (so never affected by the Files tab cleanup,
+    # nor created automatically below): "user_files" is the standard Ansys project folder, next
+    # to "Report Generator" (see PROJECT_DIR above) - legends are placed and
+    # maintained there manually by the engineer, this script only READS them, never generates them.
 PROJECT_ROOT = os.path.dirname(PROJECT_DIR)
 LEGEND_FOLDER = os.path.join(PROJECT_ROOT, "user_files", "legend")
 
-    # Dossier de la copie de travail du template (voir PPTReportBuilder dans 03_ppt_utils.py) : le template original n'est jamais ouvert directement, pour ne jamais risquer d'etre ecrase par un Ctrl+S accidentel.
+    # Folder for the working copy of the template (see PPTReportBuilder in 03_ppt_utils.py): the original template is never opened directly, to never risk being overwritten by an accidental Ctrl+S.
 REPORT_OUTPUT_FOLDER = os.path.join(DATA_ROOT, "reports")
 
-    # Directement dans PROJECT_DIR (structure a plat, pas de sous-dossier "templates") : contrairement aux dossiers ci-dessus, ce fichier ne peut pas etre cree automatiquement s'il manque (voir l'avertissement plus bas).
+    # Directly in PROJECT_DIR (flat structure, no "templates" subfolder): unlike the folders above, this file cannot be created automatically if missing (see the warning further below).
 TEMPLATE_PATH = os.path.join(PROJECT_DIR, "Master Template_def.pptx")
 
-    # Logo entreprise affiche en haut a droite de la fenetre (voir ReportGeneratorApp._find_controls,
-    # imgLogo dans le XAML) : comme TEMPLATE_PATH, ne peut pas etre cree automatiquement s'il manque.
+    # Company logo displayed in the sidebar credit card (see ReportGeneratorApp._load_logo,
+    # SidebarLogoBitmap in the XAML): like TEMPLATE_PATH, cannot be created automatically if missing.
 LOGO_PATH = os.path.join(PROJECT_DIR, "logo", "Liebherr-Emblem.png")
 
 
-# === Index des layouts personnalises du template PowerPoint ===
+# === Custom layout indices of the PowerPoint template ===
 LAYOUT_IMAGE_TABLE = 10    # title[2] / subtitle[4] / image[3] / table[1] / comment[8]
 LAYOUT_TABLE_ONLY = 8      # title[1] / subtitle[3] / table[2]
-LAYOUT_MESH_MULTI = 11     # images[5,6,7,8] (haut) / tables[9,10,11,12] (bas) -- indices sur la SLIDE generee, pas sur le layout (voir MESH_MULTI_*_SHAPE_INDICES ci-dessous)
+LAYOUT_MESH_MULTI = 11     # images[5,6,7,8] (top) / tables[9,10,11,12] (bottom) -- indices on the generated SLIDE, not on the layout (see MESH_MULTI_*_SHAPE_INDICES below)
 
 DEFAULT_IMAGE_WIDTH = 1920
 DEFAULT_IMAGE_HEIGHT = 1920
 
-# === Garde-fou d'affichage des tableaux dans PowerPoint ===
-    # Le CSV est toujours exporte quelle que soit sa taille ; seule son insertion en table PowerPoint est bloquee au-dela de ces limites (tableau illisible une fois insere).
+# === Safeguard for displaying tables in PowerPoint ===
+    # The CSV is always exported regardless of its size; only its insertion as a PowerPoint table is blocked beyond these limits (table becomes unreadable once inserted).
 MAX_TABLE_ROWS = 50
 MAX_TABLE_COLUMNS = 50
 
-# === Mesh par piece isolee (slide multi-image, voir LAYOUT_MESH_MULTI) ===
-    # Le layout 11 du template ("Disposition personnalisee") contient dans SlideMaster.CustomLayouts
-    # une forme Table supplementaire (pas un placeholder) qui n'est PAS heritee par les slides creees
-    # a partir de ce layout : sur layout.Shapes elle occupe l'index 5 et decale tout ce qui suit
-    # (images en 6-9, tables en 10-13), mais sur la slide reellement generee (report.presentation.Slides.AddSlide),
-    # cette forme est absente et tout remonte d'un cran (images en 5-8, tables en 9-12). Les indices
-    # ci-dessous sont ceux vus sur la SLIDE (ce que le code manipule reellement), pas sur le layout.
+# === Mesh per isolated part (multi-image slide, see LAYOUT_MESH_MULTI) ===
+    # Layout 11 of the template ("Custom Layout") contains, in SlideMaster.CustomLayouts,
+    # an extra Table shape (not a placeholder) that is NOT inherited by slides created
+    # from this layout: on layout.Shapes it occupies index 5 and shifts everything after it
+    # (images at 6-9, tables at 10-13), but on the actually generated slide (report.presentation.Slides.AddSlide),
+    # this shape is absent and everything shifts back by one (images at 5-8, tables at 9-12). The indices
+    # below are the ones seen on the SLIDE (what the code actually manipulates), not on the layout.
 MESH_MULTI_IMAGE_SHAPE_INDICES = [5, 6, 7, 8]
 MESH_MULTI_TABLE_SHAPE_INDICES = [9, 10, 11, 12]
-MAX_MESH_MULTI_BODIES = 4  # nombre d'emplacements image/table disponibles sur ce layout
+MAX_MESH_MULTI_BODIES = 4  # number of image/table slots available on this layout
 
 
 def ensure_folder_exists(folder_path):
     """
-    Fait : cree le dossier folder_path (et ses parents) s'il n'existe pas deja.
-    Depend de : os.path.exists / os.makedirs.
-    Retourne : rien (effet de bord sur le systeme de fichiers).
+    Does: creates the folder_path directory (and its parents) if it doesn't already exist.
+    Depends on: os.path.exists / os.makedirs.
+    Returns: nothing (side effect on the file system).
     """
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
@@ -72,19 +72,19 @@ def ensure_folder_exists(folder_path):
 
 def safe_file_name(name):
     """
-    Fait : remplace les caracteres interdits dans un nom de fichier Windows (dont "/" et "\\") par un underscore.
-    Depend de : le module re (regex).
-    Retourne : str, le nom nettoye, utilisable tel quel dans un chemin de fichier.
+    Does: replaces characters forbidden in a Windows file name (including "/" and "\\") with an underscore.
+    Depends on: the re module (regex).
+    Returns: str, the cleaned name, usable as-is in a file path.
     """
-    # Sans ce nettoyage, un nom Mechanical type "Part/Solid" cree un faux sous-dossier ("Mesh_Part\Solid.csv") et fait echouer l'ecriture.
+    # Without this cleanup, a Mechanical name like "Part/Solid" creates a fake subfolder ("Mesh_Part\Solid.csv") and the write fails.
     return re.sub(r'[\\/:*?"<>|]', "_", name).strip() or "object"
 
 
 def get_unique_file_path(folder, base_name, extension):
     """
-    Fait : construit un chemin de fichier qui n'entre pas en collision avec un fichier existant, en ajoutant un suffixe incremental si besoin.
-    Depend de : os.path.exists / os.path.join.
-    Retourne : str, un chemin absolu garanti inexistant au moment de l'appel.
+    Does: builds a file path that does not collide with an existing file, adding an incremental suffix if needed.
+    Depends on: os.path.exists / os.path.join.
+    Returns: str, an absolute path guaranteed not to exist at the time of the call.
     """
     path = os.path.join(folder, base_name + extension)
     counter = 1
@@ -96,11 +96,11 @@ def get_unique_file_path(folder, base_name, extension):
 
 def list_data_cleanup_folders():
     """
-    Fait : liste les sous-dossiers directs de DATA_ROOT proposables au nettoyage (onglet Fichiers),
-    en excluant le dossier des legendes (jamais concerne par le nettoyage - contrairement au reste,
-    ce ne sont pas des exports mais des fichiers de configuration reutilises d'une generation a l'autre).
-    Depend de : DATA_ROOT, LEGEND_FOLDER, os.listdir/os.path.isdir.
-    Retourne : list de tuples (nom_affiche, chemin_absolu), tries par nom (vide si DATA_ROOT n'existe pas).
+    Does: lists the direct subfolders of DATA_ROOT that can be offered for cleanup (Files tab),
+    excluding the legend folder (never affected by cleanup - unlike the rest,
+    these are not exports but configuration files reused from one generation to the next).
+    Depends on: DATA_ROOT, LEGEND_FOLDER, os.listdir/os.path.isdir.
+    Returns: list of tuples (display_name, absolute_path), sorted by name (empty if DATA_ROOT doesn't exist).
     """
     if not os.path.isdir(DATA_ROOT):
         return []
@@ -115,9 +115,9 @@ def list_data_cleanup_folders():
 
 def get_folder_stats(folder_path):
     """
-    Fait : calcule la taille totale et le nombre de fichiers d'un dossier (recursif, sous-dossiers inclus).
-    Depend de : os.walk, os.path.getsize.
-    Retourne : tuple (total_size_bytes, file_count) - (0, 0) si le dossier n'existe pas.
+    Does: computes the total size and file count of a folder (recursive, including subfolders).
+    Depends on: os.walk, os.path.getsize.
+    Returns: tuple (total_size_bytes, file_count) - (0, 0) if the folder doesn't exist.
     """
     total_size = 0
     file_count = 0
@@ -135,9 +135,9 @@ def get_folder_stats(folder_path):
 
 def format_folder_size(size_bytes):
     """
-    Fait : formate une taille en octets en chaine lisible (bytes/KB/MB/GB).
-    Depend de : rien (calcul pur).
-    Retourne : str, la taille formatee (ex : "12.4 MB").
+    Does: formats a size in bytes into a human-readable string (bytes/KB/MB/GB).
+    Depends on: nothing (pure calculation).
+    Returns: str, the formatted size (e.g.: "12.4 MB").
     """
     size = float(size_bytes)
     for unit in ("bytes", "KB", "MB"):
@@ -151,9 +151,9 @@ def format_folder_size(size_bytes):
 
 def clear_folder_contents(folder_path):
     """
-    Fait : supprime tout le contenu (fichiers et sous-dossiers) d'un dossier, sans supprimer le dossier lui-meme.
-    Depend de : os.listdir, os.remove, shutil.rmtree.
-    Retourne : rien (effet de bord sur le systeme de fichiers ; ne fait rien si le dossier n'existe pas).
+    Does: deletes all the contents (files and subfolders) of a folder, without deleting the folder itself.
+    Depends on: os.listdir, os.remove, shutil.rmtree.
+    Returns: nothing (side effect on the file system; does nothing if the folder doesn't exist).
     """
     if not os.path.isdir(folder_path):
         return
@@ -170,9 +170,9 @@ def clear_folder_contents(folder_path):
 
 def clean_cell_text(text):
     """
-    Fait : normalise le texte d'une cellule du Tabular Data pane pour l'export CSV.
-    Depend de : rien (traitement de chaine pur).
-    Retourne : str, le texte nettoye ("" si l'entree etait None).
+    Does: normalizes the text of a Tabular Data pane cell for CSV export.
+    Depends on: nothing (pure string processing).
+    Returns: str, the cleaned text ("" if the input was None).
     """
     if text is None:
         return ""
@@ -181,11 +181,11 @@ def clean_cell_text(text):
 
 def to_csv_cell(value):
     """
-    Fait : convertit une valeur quelconque (texte .NET unicode, nombre, None) en str encodee UTF-8 pour csv.writer.
-    Depend de : le type unicode d'IronPython 2.7.
-    Retourne : str encodee UTF-8 ("" si value est None).
+    Does: converts any value (.NET unicode text, number, None) into a UTF-8-encoded str for csv.writer.
+    Depends on: IronPython 2.7's unicode type.
+    Returns: UTF-8-encoded str ("" if value is None).
     """
-    # Certaines unites renvoyees par Mechanical (mm3, degre, micro...) contiennent des caracteres speciaux qui font planter l'ecriture si l'encodage n'est pas fixe explicitement.
+    # Some units returned by Mechanical (mm3, degree, micro...) contain special characters that crash the write if the encoding isn't explicitly fixed.
     if value is None:
         return ""
     if isinstance(value, unicode):
@@ -193,28 +193,28 @@ def to_csv_cell(value):
     return str(value)
 
 
-# Premiere execution sur un nouveau projet : ces dossiers de stockage n'existent pas encore,
-# on les cree ici une bonne fois pour toutes avant que le reste de l'application ne s'en serve.
-# LEGEND_FOLDER n'en fait PAS partie : hors de DATA_ROOT, entretenu manuellement par l'ingenieur
-# dans "user_files" (voir sa definition ci-dessus) - le creer automatiquement ici masquerait une
-# vraie absence de legendes plutot que d'avertir l'utilisateur.
+# First run on a new project: these storage folders don't exist yet,
+# they are created here once and for all before the rest of the application uses them.
+# LEGEND_FOLDER is NOT part of this: outside DATA_ROOT, maintained manually by the engineer
+# in "user_files" (see its definition above) - creating it automatically here would mask a
+# genuine absence of legends instead of warning the user.
 ensure_folder_exists(IMAGE_EXPORT_FOLDER)
 ensure_folder_exists(CSV_EXPORT_FOLDER)
 ensure_folder_exists(REPORT_OUTPUT_FOLDER)
 ensure_folder_exists(EXPORT_3D_FOLDER)
 
-# Le template ne peut pas etre cree automatiquement (fichier de contenu, pas juste un dossier) :
-# on avertit seulement en console pour que l'utilisateur sache tout de suite pourquoi la
-# generation echouerait, sans bloquer le chargement des modules suivants.
+# The template cannot be created automatically (a content file, not just a folder):
+# we only warn in the console so the user immediately knows why generation
+# would fail, without blocking the loading of the following modules.
 if not os.path.isfile(TEMPLATE_PATH):
     print "WARNING: PowerPoint template not found at the expected location: " + TEMPLATE_PATH
 
-# Meme logique pour le dossier des legendes (voir LEGEND_FOLDER ci-dessus) : plus cree
-# automatiquement, on avertit simplement si l'emplacement attendu dans "user_files" n'existe pas.
+# Same logic for the legend folder (see LEGEND_FOLDER above): no longer created
+# automatically, we simply warn if the expected location in "user_files" doesn't exist.
 if not os.path.isdir(LEGEND_FOLDER):
     print "WARNING: legend folder not found at the expected location: " + LEGEND_FOLDER
 
-# Meme logique pour le logo (voir LOGO_PATH ci-dessus) : absence non bloquante, juste un
-# avertissement (l'emplacement imgLogo dans le XAML reste alors simplement vide).
+# Same logic for the logo (see LOGO_PATH above): non-blocking absence, just a
+# warning (the imgLogo location in the XAML then simply stays empty).
 if not os.path.isfile(LOGO_PATH):
     print "WARNING: logo not found at the expected location: " + LOGO_PATH

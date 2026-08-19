@@ -10,7 +10,7 @@
 
     <Window.Resources>
 
-        <!-- ================= Palette (theme claire, tamise, couleurs douces) ================= -->
+        <!-- ================= Palette (light, muted theme, soft colors) ================= -->
         <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#EEF0F3"/>
         <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="CardBorderBrush" Color="#D2D6DE"/>
@@ -22,62 +22,62 @@
         <SolidColorBrush x:Key="TextPrimaryBrush" Color="#000000"/>
         <SolidColorBrush x:Key="TextMutedBrush" Color="#797E8A"/>
 
-        <!-- Bordure des controles de saisie (case a cocher, radio, champ, liste) :
-             legerement plus marquee que CardBorderBrush pour qu'ils restent bien
-             lisibles/identifiables sur le fond clair (CardBorderBrush est trop
-             discrete pour un controle interactif). -->
+        <!-- Border for input controls (checkbox, radio, field, list):
+             slightly more marked than CardBorderBrush so they stay
+             readable/identifiable on the light background (CardBorderBrush is too
+             discreet for an interactive control). -->
         <SolidColorBrush x:Key="InputBorderBrush" Color="#C7CBD4"/>
 
-        <!-- Fond uni de l'onglet "Apercu du rapport", derriere les cartes. -->
+        <!-- Solid background of the "Report preview" tab, behind the cards. -->
         <SolidColorBrush x:Key="PreviewBackgroundBrush" Color="#E6E9EE"/>
 
-        <!-- Boutons compacts "Tout" / "Aucun" : bleu clair pour rester bien visibles
-             sur le fond blanc des cartes. -->
+        <!-- Compact "Select all" / "Deselect all" buttons: light blue to stay clearly
+             visible on the white card background. -->
         <SolidColorBrush x:Key="MiniButtonBrush" Color="#BFE4F7"/>
         <SolidColorBrush x:Key="MiniButtonHoverBrush" Color="#8FCFF0"/>
         <SolidColorBrush x:Key="MiniButtonBorderBrush" Color="#7CC3E8"/>
 
-        <!-- Barre de titre custom des boites de dialogue "..." (fenetres sans chrome Windows,
-             voir _build_dialog_shell dans AnsysReportGenerator_WPF.py) : legerement plus
-             sombre que CardBackgroundBrush pour se distinguer du corps de la fenetre. -->
+        <!-- Custom title bar of the "..." dialogs (chromeless windows,
+             see _build_dialog_shell in AnsysReportGenerator_WPF.py): slightly darker
+             than CardBackgroundBrush to stand out from the window body. -->
         <SolidColorBrush x:Key="DialogTitleBarBrush" Color="#F0F1F4"/>
 
-        <!-- Libelle de diagnostic (unite ImportLegend detectee) dans la fenetre de
-             configuration d'un resultat : rouge volontairement voyant pour rester visible
-             immediatement, distinct du texte normal. -->
+        <!-- Diagnostic label (detected ImportLegend unit) in a result's configuration
+             panel: deliberately bright red to stay immediately visible,
+             distinct from normal text. -->
         <SolidColorBrush x:Key="DiagnosticLabelBrush" Color="#C0504D"/>
 
-        <!-- Fond de la sous-tuile "resultat de rapport" (onglet "Fichiers", borderReportTile)
-             une fois le rapport termine, remplace SecondaryBackgroundBrush. Vert clair (pas le vert
-             vif d'origine) : la tuile est desormais petite et centree, un vert trop soutenu y serait
-             trop voyant pour un simple etat "termine". -->
+        <!-- Background of the "report result" sub-tile (Files tab, borderReportTile)
+             once the report is complete, replaces SecondaryBackgroundBrush. Light green (not the
+             original bright green): the tile is now small and centered, an overly saturated green
+             would be too eye-catching for a simple "done" state. -->
         <SolidColorBrush x:Key="ReportReadyBackgroundBrush" Color="#BFE8C4"/>
 
-        <!-- Bordure des boutons (Primaire/Secondaire) : plus marquee que CardBorderBrush
-             pour que les boutons se detachent nettement du fond de fenetre, qui est
-             tres proche de SecondaryBackgroundBrush. -->
+        <!-- Button border (Primary/Secondary): more marked than CardBorderBrush
+             so buttons stand out clearly from the window background, which is
+             very close to SecondaryBackgroundBrush. -->
         <SolidColorBrush x:Key="ButtonBorderBrush" Color="#AEB4C2"/>
 
-        <!-- Nettoyage des dossiers de donnees (onglet Fichiers) : rouge clair et discret pour le
-             bouton "Vider" de chaque tuile, rouge voyant pour le gros bouton "Tout supprimer"
-             (destructif, portee globale) - deux niveaux de gravite visuellement distincts. -->
+        <!-- Data folder cleanup (Files tab): light, discreet red for the
+             "Clear" button of each tile, bright red for the big "Delete all"
+             button (destructive, global scope) - two visually distinct severity levels. -->
         <SolidColorBrush x:Key="DangerLightBrush" Color="#F4C7C3"/>
         <SolidColorBrush x:Key="DangerLightHoverBrush" Color="#EDA9A3"/>
         <SolidColorBrush x:Key="DangerLightBorderBrush" Color="#D98A83"/>
         <SolidColorBrush x:Key="DangerStrongBrush" Color="#D9463C"/>
         <SolidColorBrush x:Key="DangerStrongHoverBrush" Color="#B8362D"/>
 
-        <!-- ================= Styles de base ================= -->
+        <!-- ================= Base styles ================= -->
 
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         </Style>
 
-        <!-- Pas d'Effect (DropShadowEffect) : un shadow par carte, repete sur des dizaines de
-             cartes/lignes, cree un cout de rendu (bitmap effect) significatif dans ce contexte hote
-             (Ansys Mechanical, souvent sans acceleration GPU dediee) - source directe de la lenteur
-             ressentie (menus deroulants qui "trainent", etc). Bordure simple, deja coherente avec le
-             design plat/carre retenu par ailleurs. -->
+        <!-- No Effect (DropShadowEffect): a shadow per card, repeated across dozens of
+             cards/rows, creates a significant rendering cost (bitmap effect) in this host context
+             (Ansys Mechanical, often without dedicated GPU acceleration) - a direct source of the
+             sluggishness noticed (dropdowns that "lag", etc). Simple border, already consistent with
+             the flat/square design used elsewhere. -->
         <Style x:Key="CardBorder" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
@@ -100,7 +100,7 @@
             <Setter Property="Margin" Value="0,0,0,2"/>
         </Style>
 
-        <!-- ================= Boutons ================= -->
+        <!-- ================= Buttons ================= -->
 
         <Style x:Key="PrimaryButton" TargetType="Button">
             <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
@@ -156,9 +156,9 @@
             </Setter>
         </Style>
 
-        <!-- Bouton compact "Tout" / "Aucun" place dans l'en-tete de chaque zone de selection.
-             Style dedie (pas base sur SecondaryButton) pour avoir son propre etat de survol
-             en bleu clair et rester bien visible sur le fond blanc des cartes. -->
+        <!-- Compact "Select all" / "Deselect all" button placed in the header of each selection
+             zone. Dedicated style (not based on SecondaryButton) to have its own light-blue
+             hover state and stay clearly visible on the white card background. -->
         <Style x:Key="MiniButton" TargetType="Button">
             <Setter Property="Background" Value="{StaticResource MiniButtonBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -186,8 +186,8 @@
             </Setter>
         </Style>
 
-        <!-- Bouton "Vider" d'une tuile de nettoyage (rouge clair, destructif mais localise a un
-             seul dossier). Base sur SecondaryButton pour garder la meme geometrie/typo. -->
+        <!-- "Clear" button of a cleanup tile (light red, destructive but scoped to a
+             single folder). Based on SecondaryButton to keep the same geometry/typography. -->
         <Style x:Key="DangerButtonLight" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
             <Setter Property="Background" Value="{StaticResource DangerLightBrush}"/>
             <Setter Property="Foreground" Value="#7A1E17"/>
@@ -210,8 +210,8 @@
             </Setter>
         </Style>
 
-        <!-- Bouton "Tout supprimer" (rouge voyant, destructif et de portee globale - tous les
-             dossiers de donnees sauf les legendes). Base sur PrimaryButton (texte blanc, gras). -->
+        <!-- "Delete all" button (bright red, destructive and global scope - all
+             data folders except legends). Based on PrimaryButton (white, bold text). -->
         <Style x:Key="DangerButtonStrong" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
             <Setter Property="Background" Value="{StaticResource DangerStrongBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource DangerStrongHoverBrush}"/>
@@ -233,7 +233,7 @@
             </Setter>
         </Style>
 
-        <!-- ================= Champ de recherche ================= -->
+        <!-- ================= Search field ================= -->
 
         <Style x:Key="SearchBox" TargetType="TextBox">
             <Setter Property="Margin" Value="0,10,0,6"/>
@@ -255,9 +255,9 @@
             </Setter>
         </Style>
 
-        <!-- TextBox generique des boites de dialogue "..." (memes couleurs que SearchBox,
-             sans son Margin specifique a la position sous les boutons "Tout"/"Aucun") : les
-             dialogues placent chaque champ eux-memes via leur propre Margin explicite. -->
+        <!-- Generic TextBox for the "..." dialogs (same colors as SearchBox,
+             without its Margin specific to the position under the "Select all"/"Deselect all"
+             buttons): dialogs place each field themselves via their own explicit Margin. -->
         <Style x:Key="DialogTextBox" TargetType="TextBox">
             <Setter Property="Padding" Value="8,5"/>
             <Setter Property="Background" Value="{StaticResource InputBackgroundBrush}"/>
@@ -277,7 +277,7 @@
             </Setter>
         </Style>
 
-        <!-- ================= Case a cocher ================= -->
+        <!-- ================= Checkbox ================= -->
 
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -312,7 +312,7 @@
             </Setter>
         </Style>
 
-        <!-- ================= Bouton radio ================= -->
+        <!-- ================= Radio button ================= -->
 
         <Style TargetType="RadioButton">
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -341,7 +341,7 @@
             </Setter>
         </Style>
 
-        <!-- ================= Liste deroulante ================= -->
+        <!-- ================= Dropdown list ================= -->
 
         <Style x:Key="ComboBoxItemStyle" TargetType="ComboBoxItem">
             <Setter Property="Padding" Value="8,5"/>
@@ -400,9 +400,9 @@
                                               ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                               Margin="{TemplateBinding Padding}"
                                               HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                            <!-- PopupAnimation="None" (pas de glissement) : l'ouverture instantanee
-                                 est nettement plus fluide que l'animation par defaut dans ce contexte
-                                 hote, ou l'anim de Popup rendait le menu deroulant peu reactif. -->
+                            <!-- PopupAnimation="None" (no slide): the instant opening
+                                 is noticeably smoother than the default animation in this host
+                                 context, where the Popup animation made the dropdown feel unresponsive. -->
                             <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}"
                                    Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="None">
                                 <Border Background="{StaticResource CardBackgroundBrush}" BorderBrush="{StaticResource CardBorderBrush}"
@@ -419,11 +419,11 @@
             </Setter>
         </Style>
 
-        <!-- ================= Barre de scroll (fine, sans boutons flecheurs) ================= -->
-        <!-- Style implicite (pas de x:Key) : s'applique a TOUTE barre de scroll de l'app, y compris
-             celles creees en interne par les ScrollViewer par defaut (panneau "PARAMETRES", listes
-             de sections, apercu...) - la barre de scroll par defaut de Windows (~17px, boutons
-             flecheurs) cachait une partie du contenu dans les panneaux etroits. -->
+        <!-- ================= Scroll bar (thin, no arrow buttons) ================= -->
+        <!-- Implicit style (no x:Key): applies to EVERY scroll bar in the app, including
+             those created internally by the default ScrollViewer (SETTINGS panel, section
+             lists, preview...) - the default Windows scroll bar (~17px, arrow
+             buttons) was hiding part of the content in narrow panels. -->
 
         <Style x:Key="ThinScrollBarThumb" TargetType="Thumb">
             <Setter Property="Background" Value="{StaticResource InputBorderBrush}"/>
@@ -492,7 +492,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- ================= Onglets (verticaux, sur le cote gauche) ================= -->
+        <!-- ================= Tabs (vertical, on the left side) ================= -->
 
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent"/>
@@ -509,11 +509,11 @@
                             <Border Grid.Column="0" Background="{StaticResource CardBackgroundBrush}"
                                     BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="0">
                                 <DockPanel LastChildFill="True">
-                                    <!-- Carte credit (logo + auteur), en bas de la colonne d'onglets. Le logo
-                                         (voir LOGO_PATH dans 00_constants.py) est assigne au chargement depuis
-                                         le code Python (ReportGeneratorApp._load_logo) via une DynamicResource
-                                         plutot qu'un x:Name : les elements definis dans un ControlTemplate ont
-                                         leur propre NameScope, invisible depuis self.window.FindName(). -->
+                                    <!-- Credit card (logo + author), at the bottom of the tab column. The logo
+                                         (see LOGO_PATH in 00_constants.py) is assigned at load time from
+                                         the Python code (ReportGeneratorApp._load_logo) via a DynamicResource
+                                         rather than an x:Name: elements defined inside a ControlTemplate have
+                                         their own NameScope, invisible from self.window.FindName(). -->
                                     <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource CardBorderBrush}"
                                             BorderThickness="0,1,0,0" Padding="12,10">
                                         <StackPanel>
@@ -574,7 +574,7 @@
             </Setter>
         </Style>
 
-        <!-- ================= Curseur (slider d'opacite) ================= -->
+        <!-- ================= Slider (opacity) ================= -->
 
         <Style TargetType="Slider">
             <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
@@ -584,14 +584,14 @@
 
     <DockPanel LastChildFill="True" Margin="10">
 
-        <!-- En-tete -->
+        <!-- Header -->
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
             <TextBlock Text="PowerPoint Report Generator" Style="{StaticResource SectionHeader}"/>
             <TextBlock Text="Configure the slides to generate in the tabs below, then launch the generation."
                        Foreground="{StaticResource TextMutedBrush}"/>
         </StackPanel>
 
-        <!-- Barre d'outils -->
+        <!-- Toolbar -->
         <Border DockPanel.Dock="Top" Style="{StaticResource CardBorder}" Margin="0,0,0,10">
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="btnDeleteFigures" Content="Delete figures"
@@ -605,7 +605,7 @@
             </StackPanel>
         </Border>
 
-        <!-- Bas de fenetre : boutons d'action (toujours visibles, quel que soit l'onglet) -->
+        <!-- Bottom of window: action buttons (always visible, regardless of the active tab) -->
         <Border DockPanel.Dock="Bottom" Margin="0,10,0,0">
             <DockPanel LastChildFill="False">
                 <Button x:Name="btnClose" Content="Close" Style="{StaticResource SecondaryButton}"
@@ -615,11 +615,11 @@
             </DockPanel>
         </Border>
 
-        <!-- Contenu principal : onglets + panneau lateral global de configuration ("..." de
-             n'importe quelle ligne, tous onglets confondus - voir ReportGeneratorApp._open_config_panel).
-             Le panneau est cache (Collapsed, largeur 0 dans la Grid) tant qu'aucune ligne n'est en
-             cours de configuration ; il s'affiche au clic sur "...", se ferme via "Appliquer"/
-             "Annuler"/le bouton "x". -->
+        <!-- Main content: tabs + global side panel for configuration ("..." of
+             any row, across all tabs - see ReportGeneratorApp._open_config_panel).
+             The panel is hidden (Collapsed, width 0 in the Grid) as long as no row is being
+             configured; it appears on clicking "...", and closes via "Apply"/
+             "Cancel"/the "x" button. -->
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -745,13 +745,13 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Gauche : Contacts a afficher, seule occupante de la colonne (priorite visuelle) -->
+                        <!-- Left: Contacts to display, sole occupant of the column (visual priority) -->
                         <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,5,0">
                             <DockPanel>
-                                <!-- Filtre par type (Frictional/Bonded/Autres, d'apres le prefixe du nom) : fait
-                                     remonter en haut de la liste les contacts correspondants, sans les cacher.
-                                     Prend la place du Tout selectionner/deselectionner (deplaces en bas, comme
-                                     partout ailleurs : moins prioritaires que le contenu de la liste elle-meme). -->
+                                <!-- Filter by type (Frictional/Bonded/Other, based on the name prefix): brings
+                                     matching contacts to the top of the list without hiding the rest.
+                                     Takes the place of Select all/Deselect all (moved to the bottom, as
+                                     everywhere else: lower priority than the list content itself). -->
                                 <Grid DockPanel.Dock="Top">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -774,7 +774,7 @@
                             </DockPanel>
                         </Border>
 
-                        <!-- Droite : les 4 autres sections, moins prioritaires, en 2x2 -->
+                        <!-- Right: the 4 other sections, lower priority, in a 2x2 layout -->
                         <UniformGrid Grid.Column="1" Columns="2" Margin="5,0,0,0">
                             <Border Style="{StaticResource CardBorder}" VerticalAlignment="Top">
                                 <DockPanel>
@@ -899,8 +899,8 @@
                         <ColumnDefinition Width="360"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Gauche : choix du template puis grille des cases (2x4, seules les N
-                         premieres cases du template choisi sont actives) -->
+                    <!-- Left: template choice then cell grid (2x4, only the first N
+                         cells of the chosen template are active) -->
                     <DockPanel Grid.Column="0" Margin="0,0,5,0" LastChildFill="True">
                         <Border DockPanel.Dock="Top" Style="{StaticResource CardBorder}">
                             <StackPanel>
@@ -910,10 +910,10 @@
                                            Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap"
                                            Text="Configurable grid based on the template: each cell displays a different result on the same slide."/>
 
-                                <!-- Ligne dediee, pleine largeur : les 5 boutons de template (2/3/4/6/8) tenaient
-                                     mal sur la meme ligne que le compteur/le bouton "Ajouter au rapport" (les
-                                     derniers boutons se retrouvaient hors-cadre, invisibles). WrapPanel en plus
-                                     du DockPanel.Dock="Top" : passe a la ligne si la fenetre est retrecie. -->
+                                <!-- Dedicated, full-width row: the 5 template buttons (2/3/4/6/8) didn't
+                                     fit well on the same row as the counter/the "Add to report" button (the
+                                     last buttons ended up off-frame, invisible). WrapPanel in addition to
+                                     DockPanel.Dock="Top": wraps to a new line if the window is narrowed. -->
                                 <DockPanel LastChildFill="True">
                                     <TextBlock DockPanel.Dock="Left" Text="TEMPLATE" VerticalAlignment="Center"
                                                FontWeight="Bold" FontSize="11"
@@ -933,10 +933,10 @@
 
                         <Border Style="{StaticResource CardBorder}">
                             <StackPanel>
-                                <!-- Largeur ET hauteur fixes (pas seulement la hauteur) : verrouille
-                                     les proportions des cases (130x130, carrees) quelle que soit la
-                                     largeur disponible - un UniformGrid sans Width explicite etire ses
-                                     colonnes pour remplir l'espace, deformant les cases en rectangles. -->
+                                <!-- Width AND height fixed (not just the height): locks
+                                     the cell proportions (130x130, square) regardless of the
+                                     available width - a UniformGrid without an explicit Width stretches its
+                                     columns to fill the space, deforming the cells into rectangles. -->
                                 <UniformGrid x:Name="gridMultiResultCells" Columns="4" Rows="2"
                                              Width="520" Height="260" HorizontalAlignment="Left"/>
                                 <TextBlock x:Name="lblMultiResultHint" Margin="0,10,0,0" FontSize="11"
@@ -945,8 +945,8 @@
                         </Border>
                     </DockPanel>
 
-                    <!-- Droite : configuration de la case selectionnee (choix du resultat, puis
-                         vue/coupe/legende/apparence/scale factor - plus aucune fenetre separee) -->
+                    <!-- Right: configuration of the selected cell (result choice, then
+                         view/section/legend/appearance/scale factor - no separate window anymore) -->
                     <Border Grid.Column="1" Style="{StaticResource CardBorder}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
                             <StackPanel x:Name="panelMultiResultSidePanel"/>
@@ -979,7 +979,7 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Haut gauche : chemins de fichiers -->
+                    <!-- Top left: file paths -->
                     <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardBorder}">
                         <DockPanel>
                             <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
@@ -994,7 +994,7 @@
 
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <StackPanel>
-                                    <!-- Template : chemin sensible, toute la generation en depend -->
+                                    <!-- Template: sensitive path, the whole generation depends on it -->
                                     <Border Background="{StaticResource DangerLightBrush}" BorderBrush="{StaticResource DangerLightBorderBrush}"
                                             BorderThickness="1" CornerRadius="3" Padding="6" Margin="0,0,0,6">
                                         <Grid>
@@ -1051,8 +1051,8 @@
                                                 Style="{StaticResource SecondaryButton}" Padding="7,3" MinWidth="26" FontSize="11"/>
                                     </Grid>
 
-                                    <!-- Legendes : deplacees dans user_files (hors du dossier data, plus geree/generee
-                                         par ce script) - mise en evidence distincte du Template, invite a verifier. -->
+                                    <!-- Legends: moved to user_files (outside the data folder, no longer managed/generated
+                                         by this script) - visually distinct from Template, prompts a manual check. -->
                                     <Border Background="{StaticResource SecondaryBackgroundBrush}" BorderBrush="{StaticResource ButtonBorderBrush}"
                                             BorderThickness="1" CornerRadius="3" Padding="6">
                                         <StackPanel>
@@ -1076,7 +1076,7 @@
                         </DockPanel>
                     </Border>
 
-                    <!-- Haut droite : nettoyage des dossiers de donnees -->
+                    <!-- Top right: data folder cleanup -->
                     <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource CardBorder}">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Top" Text="Data folder cleanup" Style="{StaticResource CardTitle}"/>
@@ -1087,7 +1087,7 @@
                         </DockPanel>
                     </Border>
 
-                    <!-- Bas gauche : fichiers CSV disponibles, sous forme de liste -->
+                    <!-- Bottom left: available CSV files, as a list -->
                     <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource CardBorder}">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Top" Text="Available CSV files" Style="{StaticResource CardTitle}"/>
@@ -1097,7 +1097,7 @@
                         </DockPanel>
                     </Border>
 
-                    <!-- Bas droite : progression (fine, en haut) + acces au rapport genere -->
+                    <!-- Bottom right: progress (thin, at the top) + access to the generated report -->
                     <Border x:Name="borderReportStatus" Grid.Row="1" Grid.Column="1" Style="{StaticResource CardBorder}">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Top" Text="Generation and report" Style="{StaticResource CardTitle}"/>
@@ -1133,7 +1133,7 @@
 
             </TabControl>
 
-            <!-- Panneau lateral global de configuration ("PARAMETRES") -->
+            <!-- Global side panel for configuration ("SETTINGS") -->
             <Border x:Name="borderConfigPanel" Grid.Column="1" Style="{StaticResource CardBorder}"
                     Width="360" Visibility="Collapsed">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
