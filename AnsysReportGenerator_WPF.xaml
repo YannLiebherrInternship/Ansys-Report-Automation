@@ -1051,12 +1051,13 @@
                                                 Style="{StaticResource SecondaryButton}" Padding="7,3" MinWidth="26" FontSize="11"/>
                                     </Grid>
 
-                                    <!-- Legends: moved to user_files (outside the data folder, no longer managed/generated
-                                         by this script) - visually distinct from Template, prompts a manual check. -->
+                                    <!-- Legends: in the current Ansys project's user_files/legend (falls back to
+                                         data/legend if the project was never saved) - never populated/generated
+                                         by this script - visually distinct from Template, prompts a manual check. -->
                                     <Border Background="{StaticResource SecondaryBackgroundBrush}" BorderBrush="{StaticResource ButtonBorderBrush}"
                                             BorderThickness="1" CornerRadius="3" Padding="6">
                                         <StackPanel>
-                                            <TextBlock Text="Legends (user_files\legend - to check, not managed by this script):"
+                                            <TextBlock Text="Legends (project's user_files/legend - to check, not managed by this script):"
                                                        FontSize="11" Foreground="{StaticResource TextMutedBrush}"
                                                        TextWrapping="Wrap" Margin="0,0,0,3"/>
                                             <Grid>

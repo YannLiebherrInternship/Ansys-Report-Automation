@@ -4,25 +4,40 @@ import os
 import re
 import shutil
 
-# === Root paths, computed from PROJECT_DIR (already defined by AnsysReportGenerator_WPF.py before the execfile() of this file, = the "Report Generator" folder of the Ansys project) ===
-# No path is hardcoded for a specific machine/project: PROJECT_DIR is located via the Ansys
-# API itself (ExtAPI.DataModel.Project.ProjectDirectory), not via the script location -
-# a new project that groups all the .py files, the .xaml and the template in a "Report
-# Generator" folder next to "user_files" works out of the box, and the storage folders
-# below are created automatically on first run if they don't already exist
-# (see the ensure_folder_exists() calls at the bottom of this file).
+# === Root paths, computed from PROJECT_DIR (already defined by AnsysReportGenerator_WPF.py before the execfile() of this file, = the "Report Generator" folder of the extension itself) ===
+# No path is hardcoded for a specific machine/project: PROJECT_DIR is located via __file__ (see
+# _prepare_environment in AnsysReportGenerator_WPF.py), i.e. the extension's own install folder -
+# not the Ansys project currently open. DATA_ROOT and the folders below therefore live next to
+# this script, shared by every Ansys project opened with this same extension, and are created
+# automatically on first run if they don't already exist (see the ensure_folder_exists() calls
+# at the bottom of this file).
 DATA_ROOT = os.path.join(PROJECT_DIR, "data")
 
 IMAGE_EXPORT_FOLDER = os.path.join(DATA_ROOT, "image_export")
 CSV_EXPORT_FOLDER = os.path.join(DATA_ROOT, "csv_export")
 EXPORT_3D_FOLDER = os.path.join(DATA_ROOT, "export_3D")
 
-    # Deliberately OUTSIDE of DATA_ROOT (so never affected by the Files tab cleanup,
-    # nor created automatically below): "user_files" is the standard Ansys project folder, next
-    # to "Report Generator" (see PROJECT_DIR above) - legends are placed and
-    # maintained there manually by the engineer, this script only READS them, never generates them.
-PROJECT_ROOT = os.path.dirname(PROJECT_DIR)
-LEGEND_FOLDER = os.path.join(PROJECT_ROOT, "user_files", "legend")
+    # Unlike the folders above, legends are deliberately NOT shared across projects: engineers
+    # save and edit their legend .xml files per Ansys project, in that project's own
+    # "user_files/legend" folder (standard Ansys project folder) - this script only READS them,
+    # never generates them. Located via ExtAPI.DataModel.Project.ProjectDirectory (the
+    # "<Project>_files" folder of the project currently open in Mechanical): safe to call here
+    # even though PROJECT_DIR itself no longer depends on ExtAPI, because 00_constants.py is only
+    # ever loaded on the toolbar button click (HighFiveOut), by which point a Mechanical project
+    # is necessarily open. Falls back to the shared data/legend folder (with a console warning)
+    # if the project was never saved and ProjectDirectory is unavailable, so a missing/unsaved
+    # project degrades gracefully instead of crashing the whole extension.
+try:
+    _ansys_project_directory = ExtAPI.DataModel.Project.ProjectDirectory
+except Exception as _legend_dir_ex:
+    _ansys_project_directory = None
+    print "WARNING: unable to read ExtAPI.DataModel.Project.ProjectDirectory ({}): falling back to the shared legend folder.".format(str(_legend_dir_ex))
+
+if _ansys_project_directory:
+    LEGEND_FOLDER = os.path.join(_ansys_project_directory, "user_files", "legend")
+else:
+    print "WARNING: ExtAPI.DataModel.Project.ProjectDirectory is empty (save the Ansys project to use its own legends) - falling back to the shared legend folder."
+    LEGEND_FOLDER = os.path.join(DATA_ROOT, "legend")
 
     # Folder for the working copy of the template (see PPTReportBuilder in 03_ppt_utils.py): the original template is never opened directly, to never risk being overwritten by an accidental Ctrl+S.
 REPORT_OUTPUT_FOLDER = os.path.join(DATA_ROOT, "reports")
@@ -193,11 +208,11 @@ def to_csv_cell(value):
     return str(value)
 
 
-# First run on a new project: these storage folders don't exist yet,
+# First run on a new install: these storage folders don't exist yet,
 # they are created here once and for all before the rest of the application uses them.
-# LEGEND_FOLDER is NOT part of this: outside DATA_ROOT, maintained manually by the engineer
-# in "user_files" (see its definition above) - creating it automatically here would mask a
-# genuine absence of legends instead of warning the user.
+# LEGEND_FOLDER is NOT part of this: it is maintained manually by the engineer in the current
+# Ansys project's "user_files" (see its definition above) - creating it automatically here would
+# mask a genuine absence of legends instead of warning the user.
 ensure_folder_exists(IMAGE_EXPORT_FOLDER)
 ensure_folder_exists(CSV_EXPORT_FOLDER)
 ensure_folder_exists(REPORT_OUTPUT_FOLDER)
@@ -209,8 +224,8 @@ ensure_folder_exists(EXPORT_3D_FOLDER)
 if not os.path.isfile(TEMPLATE_PATH):
     print "WARNING: PowerPoint template not found at the expected location: " + TEMPLATE_PATH
 
-# Same logic for the legend folder (see LEGEND_FOLDER above): no longer created
-# automatically, we simply warn if the expected location in "user_files" doesn't exist.
+# Same logic for the legend folder (see LEGEND_FOLDER above): not created automatically, we
+# simply warn if the expected location in the current project's "user_files" doesn't exist.
 if not os.path.isdir(LEGEND_FOLDER):
     print "WARNING: legend folder not found at the expected location: " + LEGEND_FOLDER
 

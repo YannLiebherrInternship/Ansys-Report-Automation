@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import sys
 import xml.etree.ElementTree as ET
 
 import clr
@@ -44,82 +45,131 @@ from System.Windows.Input import Key, MouseButtonState, Cursors
 from System import Uri, UriKind
 
 
+# --- Console output hardening ---
+# ACT's Python console stream can already be closed by the time a deferred toolbar callback
+# runs, even on the very first invocation of a session: observed in practice as "SystemError:
+# Cannot access a closed Stream" on the very first print statement inside _prepare_environment
+# (SECTION 1), thrown from deep inside ACT's own invocation of HighFiveOut - unrelated to
+# anything this script does, and not something Python code can prevent ACT from doing. Wrapping
+# sys.stdout once, at the very top of HighFiveOut (SECTION 8), makes every later print in this
+# script AND in the execfile'd 00 -> 05 modules degrade silently instead of crashing the whole
+# report generation - consistent with this project's "log and continue" error handling (see
+# CLAUDE.md).
+
+
+class _SafeStdout(object):
+    """Wraps a stream so that write()/flush() failures (e.g. a closed ACT console stream) are swallowed instead of raised."""
+
+    def __init__(self, target):
+        self._target = target
+
+    def write(self, text):
+        try:
+            self._target.write(text)
+        except Exception:
+            pass
+
+    def flush(self):
+        try:
+            self._target.flush()
+        except Exception:
+            pass
+
+
+def _harden_console_output():
+    """
+    Does: wraps sys.stdout in _SafeStdout so a closed ACT console stream can no longer crash a print statement.
+    Depends on: sys.stdout, _SafeStdout.
+    Returns: nothing (side effect: reassigns sys.stdout, once).
+    """
+    if not isinstance(sys.stdout, _SafeStdout):
+        sys.stdout = _SafeStdout(sys.stdout)
+
+
 # --- SECTION 1 - Loading the project modules (00 -> 05) ---
-# execfile() executes each file in this script's global namespace, as if its
-# content had been copy-pasted into the console right after the others.
+# This whole block lives inside a function (not at module level) because ACT loads this script
+# for EVERY context where the extension is registered, including the Workbench "Project" page
+# before Mechanical is even open. Executable module-level code that touches ExtAPI would crash
+# as soon as the extension loads (Project context) instead of waiting for the toolbar button
+# click (callback HighFiveOut, SECTION 8) - this is what "Can not load extension for context
+# Project" comes from. execfile() runs each file in this script's global namespace (explicit 2nd
+# argument = globals()), as if its content had been copy-pasted into the console right after the
+# others.
 
-# PROJECT_DIR = "Report Generator" folder of the current Ansys project, which groups EVERYTHING: this
-# script, AnsysReportGenerator_WPF.xaml, the modules 00_constants.py -> 05_interactive_slides.py
-# and the PowerPoint template (deliberately flat structure, a single folder to place next to
-# "user_files" in the Ansys project's file directory).
-#
-# Located via the Ansys API itself (ExtAPI.DataModel.Project.ProjectDirectory, the
-# "<Project>_files" folder of the current Mechanical project) rather than via __file__/os.getcwd()/sys.argv:
-# the latter proved unreliable depending on how Mechanical runs the script (they
-# can point to a path specific to the session rather than the script's actual location),
-# whereas ExtAPI is guaranteed to be available (used everywhere else in this project) and always
-# gives the real project directory, regardless of how the script is launched.
-try:
-    _ansys_project_directory = ExtAPI.DataModel.Project.ProjectDirectory
-except Exception as _ex:
-    raise RuntimeError(
-        "Unable to read ExtAPI.DataModel.Project.ProjectDirectory: {}. Has the Ansys "
-        "project been saved at least once?".format(str(_ex))
-    )
 
-if not _ansys_project_directory:
-    raise RuntimeError(
-        "ExtAPI.DataModel.Project.ProjectDirectory is empty: save the Ansys project before "
-        "running this script."
-    )
+def _prepare_environment():
+    """
+    Does: locates PROJECT_DIR via __file__, loads modules 00 -> 05 and the default file paths.
+    Depends on: __file__ (path of this script, set by ACT when it loads the <script src> from the manifest), execfile(..., globals()).
+    Returns: nothing (side effect: populates the globals PROJECT_DIR, FILE_PATH_SETTINGS, _DEFAULT_FILE_PATHS and everything defined by 00_constants.py -> 05_interactive_slides.py).
+    """
+    global PROJECT_DIR, FILE_PATH_SETTINGS, _DEFAULT_FILE_PATHS
 
-PROJECT_DIR = os.path.join(_ansys_project_directory, "Report Generator")
-
-if not os.path.isfile(os.path.join(PROJECT_DIR, "00_constants.py")):
-    raise IOError(
-        "'Report Generator' folder not found or incomplete: {}. Check that it exists next "
-        "to the project's 'user_files' folder (ExtAPI.DataModel.Project.ProjectDirectory), and "
-        "that it contains AnsysReportGenerator_WPF.py/.xaml, the modules 00_constants.py -> "
-        "05_interactive_slides.py, and the PowerPoint template.".format(PROJECT_DIR)
-    )
-
-_MODULE_FILES = [
-    "00_constants.py",
-    "01_data_export.py",
-    "02_image_export.py",
-    "03_ppt_utils.py",
-    "04_slides.py",
-    "05_interactive_slides.py",
-]
-
-for _module_file in _MODULE_FILES:
-    _module_path = os.path.join(PROJECT_DIR, _module_file)
-    if not os.path.exists(_module_path):
-        raise IOError(
-            "Module not found: {}. Check PROJECT_DIR at the top of "
-            "AnsysReportGenerator_WPF.py.".format(_module_path)
+    # PROJECT_DIR = "Liebherr Report Generator" folder containing THIS script, wherever the
+    # extension was installed (an "Additional Extension Folder" picked in Options, or the
+    # extraction folder of an .actx installed via the Extension Manager, on any machine).
+    #
+    # Located via __file__ rather than via ExtAPI.DataModel.Project.ProjectDirectory: the latter
+    # refers to the Ansys project currently OPEN in Mechanical, which has nothing to do with
+    # where the extension is installed - using it would break the toolbar button as soon as it
+    # is triggered in a different project than the one used at install time (the extension must
+    # behave identically in any project, without copying anything into it). __file__ is set by
+    # ACT when it loads the <script src> from the manifest (unlike the scripting console, where
+    # __file__/os.getcwd() proved unreliable): it is the real path of this .py file as installed,
+    # never the path of the project currently open.
+    try:
+        PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        raise RuntimeError(
+            "__file__ is not defined in this execution context. This script must be loaded by "
+            "ACT via <script src> in Liebherr Report Generator.xml (running it directly from the "
+            "scripting console is no longer the supported installation mode)."
         )
-    print "Loading module: " + _module_path
-    execfile(_module_path)
 
-print "All modules loaded."
+    if not os.path.isfile(os.path.join(PROJECT_DIR, "00_constants.py")):
+        raise IOError(
+            "Missing modules next to AnsysReportGenerator_WPF.py: {}. The extension appears to "
+            "be incompletely installed/unpacked - check that 00_constants.py -> "
+            "05_interactive_slides.py, AnsysReportGenerator_WPF.xaml and the PowerPoint template "
+            "are all present in this same folder.".format(PROJECT_DIR)
+        )
 
+    _MODULE_FILES = [
+        "00_constants.py",
+        "01_data_export.py",
+        "02_image_export.py",
+        "03_ppt_utils.py",
+        "04_slides.py",
+        "05_interactive_slides.py",
+    ]
 
-# --- File paths editable from the "Files" tab ---
-# Original values from 00_constants.py, captured once here (before any
-# modification from the UI) so that the "Reset paths" button can
-# always revert to them. Key = name of the corresponding global in 00_constants.py, reassigned
-# directly via globals()[key] = ...: all modules 00_constants.py -> 05_interactive_slides.py
-# read this same global at call time, no other change needed elsewhere.
-FILE_PATH_SETTINGS = [
-    ("TEMPLATE_PATH", "txtPathTemplate", "btnBrowseTemplate", "file"),
-    ("IMAGE_EXPORT_FOLDER", "txtPathImages", "btnBrowseImages", "folder"),
-    ("CSV_EXPORT_FOLDER", "txtPathCsv", "btnBrowseCsv", "folder"),
-    ("LEGEND_FOLDER", "txtPathLegends", "btnBrowseLegends", "folder"),
-    ("REPORT_OUTPUT_FOLDER", "txtPathReports", "btnBrowseReports", "folder"),
-]
+    for _module_file in _MODULE_FILES:
+        _module_path = os.path.join(PROJECT_DIR, _module_file)
+        if not os.path.exists(_module_path):
+            raise IOError(
+                "Module not found: {}. Check PROJECT_DIR at the top of "
+                "AnsysReportGenerator_WPF.py.".format(_module_path)
+            )
+        print "Loading module: " + _module_path
+        execfile(_module_path, globals())
 
-_DEFAULT_FILE_PATHS = dict((name, globals()[name]) for name, _, _, _ in FILE_PATH_SETTINGS)
+    print "All modules loaded."
+
+    # --- File paths editable from the "Files" tab ---
+    # Original values from 00_constants.py, captured once here (before any modification from the
+    # UI) so that the "Reset paths" button can always revert to them. Key = name of the
+    # corresponding global in 00_constants.py, reassigned directly via globals()[key] = ...: all
+    # modules 00_constants.py -> 05_interactive_slides.py read this same global at call time, no
+    # other change needed elsewhere.
+    FILE_PATH_SETTINGS = [
+        ("TEMPLATE_PATH", "txtPathTemplate", "btnBrowseTemplate", "file"),
+        ("IMAGE_EXPORT_FOLDER", "txtPathImages", "btnBrowseImages", "folder"),
+        ("CSV_EXPORT_FOLDER", "txtPathCsv", "btnBrowseCsv", "folder"),
+        ("LEGEND_FOLDER", "txtPathLegends", "btnBrowseLegends", "folder"),
+        ("REPORT_OUTPUT_FOLDER", "txtPathReports", "btnBrowseReports", "folder"),
+    ]
+
+    _DEFAULT_FILE_PATHS = dict((name, globals()[name]) for name, _, _, _ in FILE_PATH_SETTINGS)
 
 
 # --- SECTION 2 - Shared helpers (status colors, search) ---
@@ -3544,7 +3594,32 @@ class ReportGeneratorApp(object):
 
 
 # --- SECTION 8 - Entry point ---
+# init/HighFiveOut are the two callbacks declared in "Liebherr Report Generator.xml"
+# (<oninit>init</oninit> and <onclick>HighFiveOut</onclick> on the toolbar button). These are the
+# ONLY entry points: nothing else in this file runs when the extension loads.
 
-_xaml_path = os.path.join(PROJECT_DIR, "AnsysReportGenerator_WPF.xaml")
-_app = ReportGeneratorApp(_xaml_path)
-_app.window.ShowDialog()
+
+def init():
+    """
+    Does: oninit callback of the Mechanical interface (Liebherr Report Generator.xml).
+    Depends on: nothing - must NOT touch ExtAPI.DataModel.Project.Model here (see _prepare_environment, called later from HighFiveOut).
+    Returns: nothing.
+    """
+    pass
+
+
+def HighFiveOut(index):
+    """
+    Does: onclick callback of the toolbar button (Liebherr Report Generator.xml) - the real entry point of the application.
+    Depends on: _harden_console_output, _prepare_environment, ReportGeneratorApp.
+    Returns: nothing (side effect: displays the WPF report generation window).
+
+    ACT invokes toolbar onclick callbacks with one argument (index of the clicked entry, ACT SDK
+    convention) - the signature must accept it even though it is unused here, otherwise ACT
+    raises TypeError: HighFiveOut() takes no arguments (1 given).
+    """
+    _harden_console_output()
+    _prepare_environment()
+    xaml_path = os.path.join(PROJECT_DIR, "AnsysReportGenerator_WPF.xaml")
+    app = ReportGeneratorApp(xaml_path)
+    app.window.ShowDialog()
